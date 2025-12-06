@@ -1,17 +1,25 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package com.mycompany.inventaris.view;
 
-import com.mycompany.inventaris.dao.LoginDAO;
-import com.mycompany.inventaris.model.User;
-import javafx.geometry.Insets;
+/**
+ *
+ * @author Amy
+ */
+
 import javafx.geometry.Pos;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+
+import com.mycompany.inventaris.dao.LoginDAO;
+import com.mycompany.inventaris.model.User;
 
 public class LoginPage extends StackPane {
 
@@ -19,176 +27,225 @@ public class LoginPage extends StackPane {
 
     public LoginPage(Stage stage) {
         this.stage = stage;
-        initializeUI();
-    }
+         javafx.scene.text.Font.loadFont(
+        getClass().getResourceAsStream("/fonts/Poppins-Regular.ttf"), 12);
 
-    private void loadStylesheet() {
-        try {
-            String css = getClass().getResource("/css/main.css").toExternalForm();
-            this.getStylesheets().add(css);
-        } catch (Exception e) {
-            System.err.println("Failed to load CSS: " + e.getMessage());
-        }
+        javafx.scene.text.Font.loadFont(
+        getClass().getResourceAsStream("/fonts/Poppins-Bold.ttf"), 12);
+
+        initializeUI();
     }
 
     private void initializeUI() {
 
-        // ===== LOAD CSS =====
-        loadStylesheet();
+        // ================= BACKGROUND ==================
+        ImageView background = new ImageView(
+                new Image(getClass().getResourceAsStream("/assets/login-bg.png"))
+        );
+        background.setPreserveRatio(false);
+        background.fitWidthProperty().bind(this.widthProperty());
+        background.fitHeightProperty().bind(this.heightProperty());
 
-        // ===== BACKGROUND =====
-        Pane background = createBackground();
 
-        // ===== LOGO POJOK KIRI =====
-        ImageView cornerLogo = new ImageView(
+        // ================= CARD CONTAINER ==================
+        VBox loginCard = new VBox(15);
+        loginCard.setAlignment(Pos.TOP_LEFT);
+
+        // ukuran fix
+        loginCard.setPrefWidth(360);
+        loginCard.setMaxWidth(360);
+        loginCard.setMinWidth(360);
+
+        loginCard.setPrefHeight(480);
+        loginCard.setMaxHeight(480);
+        loginCard.setMinHeight(480);
+
+        loginCard.setStyle(
+                "-fx-background-color: white;" +
+                "-fx-background-radius: 20;" +
+                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 25, 0, 0, 6);" +
+                "-fx-padding: 30 40 30 40;"
+        );
+
+
+
+        // ================= LOGO ==================
+        ImageView logo = new ImageView(
                 new Image(getClass().getResourceAsStream("/assets/logoAsa.png"))
         );
-        cornerLogo.setFitHeight(60);
-        cornerLogo.setPreserveRatio(true);
+        logo.setFitHeight(70);
+        logo.setPreserveRatio(true);
+        
+        StackPane logoBox = new StackPane(logo);
+        logoBox.setAlignment(Pos.CENTER);
+        logoBox.setMaxWidth(Double.MAX_VALUE);
+        // ================= TITLE ==================
+        Label title = new Label("MASUK");
+        title.setStyle(
+                "-fx-font-size: 18px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-font-family: 'Poppins';" +
+                "-fx-text-fill: #1e293b;"
+        );
 
-        StackPane.setAlignment(cornerLogo, Pos.TOP_LEFT);
-        StackPane.setMargin(cornerLogo, new Insets(25, 0, 0, 30));
-
-        // ===== LOGIN CARD =====
-        VBox loginCard = new VBox(18);
-        loginCard.getStyleClass().add("login-card");
-        loginCard.setAlignment(Pos.CENTER);
-        loginCard.setPadding(new Insets(40, 40, 40, 40));
-
-
-        // Title
-        Label title = new Label("Login");
-        title.getStyleClass().add("login-title");
-
-        Label subtitle = new Label("Masuk ke akun Anda");
-        subtitle.getStyleClass().add("login-subtitle");
-
-        VBox titleBox = new VBox(5, title, subtitle);
-        titleBox.setAlignment(Pos.CENTER);
-
-        // ===== FORM =====
-        VBox formFields = new VBox(15);
-
-        Label usernameLabel = new Label("Username");
-        usernameLabel.getStyleClass().add("login-label");
+        // ================= USERNAME ==================
+        Label labelUser = new Label("Nama Pengguna");
+        labelUser.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
 
         TextField usernameField = new TextField();
-        usernameField.setPromptText("Masukkan username");
-        usernameField.getStyleClass().add("login-textfield");
-
-        VBox usernameBox = new VBox(8, usernameLabel, usernameField);
-
-        Label passwordLabel = new Label("Password");
-        passwordLabel.getStyleClass().add("login-label");
-
-        PasswordField passwordField = new PasswordField();
-        passwordField.setPromptText("Masukkan password");
-        passwordField.getStyleClass().add("login-textfield");
-
-        VBox passwordBox = new VBox(8, passwordLabel, passwordField);
-
-        formFields.getChildren().addAll(usernameBox, passwordBox);
-
-        // ===== BUTTON =====
-        Button loginBtn = new Button("Login");
-        loginBtn.getStyleClass().add("login-button");
-
-        loginBtn.setOnAction(e ->
-                handleLogin(usernameField.getText(), passwordField.getText())
+        usernameField.setPromptText("Ketik username");
+        usernameField.setStyle(
+                "-fx-font-family: 'Poppins';" +
+                "-fx-background-color: white;" +
+                "-fx-border-color: #d5dbe4;" +
+                "-fx-border-radius: 8;" +
+                "-fx-background-radius: 8;" +
+                "-fx-padding: 8 10;" +
+                "-fx-font-size: 12px;"
         );
 
-        Hyperlink backLink = new Hyperlink("← Kembali ke Beranda");
-        backLink.getStyleClass().add("login-back-link");
-        backLink.setOnAction(e -> {
-            Scene newScene = new Scene(new MainPage(stage), 1280, 720);
-            stage.setScene(newScene);
+        // ================= PASSWORD FIELD ==================
+        Label passLabel = new Label("Kata Sandi");
+        passLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
+
+        // StackPane sebagai container passwordField + icon mata
+        StackPane pwStack = new StackPane();
+        pwStack.setAlignment(Pos.CENTER_LEFT);
+
+        // HIDDEN password
+        PasswordField passwordHidden = new PasswordField();
+        passwordHidden.setPromptText("Masukkan password");
+        passwordHidden.setStyle(
+                "-fx-background-color: white;" +
+                "-fx-border-color: #d5dbe4;" +
+                "-fx-border-radius: 8;" +
+                "-fx-background-radius: 8;" +
+                "-fx-padding: 8 32 8 10;" +   // tambah space kanan buat icon mata
+                "-fx-font-size: 12px;"
+        );
+
+        // VISIBLE password (toggle mode)
+        TextField passwordVisible = new TextField();
+        passwordVisible.setPromptText("Masukkan password");
+        passwordVisible.setStyle(
+                "-fx-background-color: white;" +
+                "-fx-border-color: #d5dbe4;" +
+                "-fx-border-radius: 8;" +
+                "-fx-background-radius: 8;" +
+                "-fx-padding: 8 32 8 10;" +
+                "-fx-font-size: 12px;"
+        );
+        passwordVisible.setVisible(false);
+        passwordVisible.setManaged(false);
+
+        // ICON mata
+        Button toggleBtn = new Button("👁");
+        toggleBtn.setStyle(
+                "-fx-background-color: transparent;" +
+                "-fx-font-size: 12px;" +
+                "-fx-padding: 0;" +
+                "-fx-text-fill: #64748b;" +
+                "-fx-cursor: hand;"
+        );
+
+        // posisikan icon di kanan dalam field
+        StackPane.setAlignment(toggleBtn, Pos.CENTER_RIGHT);
+        StackPane.setMargin(toggleBtn, new Insets(0, 8, 0, 0));
+
+        // Toggle Show/Hide
+        final boolean[] isShowing = {false};
+        toggleBtn.setOnAction(e -> {
+            isShowing[0] = !isShowing[0];
+            if (isShowing[0]) {
+                passwordVisible.setText(passwordHidden.getText());
+                passwordVisible.setVisible(true);
+                passwordVisible.setManaged(true);
+                passwordHidden.setVisible(false);
+                passwordHidden.setManaged(false);
+                toggleBtn.setText("👁‍🗨");
+            } else {
+                passwordHidden.setText(passwordVisible.getText());
+                passwordHidden.setVisible(true);
+                passwordHidden.setManaged(true);
+                passwordVisible.setVisible(false);
+                passwordVisible.setManaged(false);
+                toggleBtn.setText("👁");
+            }
         });
 
-        HBox backBox = new HBox(backLink);
-        backBox.setAlignment(Pos.CENTER);
+        // Masukkan field + icon ke StackPane
+        pwStack.getChildren().addAll(passwordHidden, passwordVisible, toggleBtn);
 
-        // Tambah semua ke card
-        loginCard.getChildren().addAll(
-                titleBox,
-                formFields,
-                loginBtn,
-                backBox
+
+        // ================= REMEMBER ME ==================
+        CheckBox rememberMe = new CheckBox("Ingat saya");
+        rememberMe.setStyle("-fx-font-size: 10px; -fx-text-fill: #64748b;");
+
+
+        // ================= BUTTON LOGIN ==================
+        Button loginBtn = new Button("MASUK");
+        loginBtn.setStyle(
+                "-fx-background-color: #dc2626;" +
+                "-fx-text-fill: white;" +
+                "-fx-font-size: 12px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-background-radius: 8;" +
+                "-fx-padding: 10 0;" +
+                "-fx-cursor: hand;" +
+                "-fx-max-width: infinity;"
         );
 
-        // ===== STACK SEMUA =====
+        loginBtn.setOnAction(e -> {
+            String pw = isShowing[0] ? passwordVisible.getText() : passwordHidden.getText();
+            handleLogin(usernameField.getText(), pw);
+        });
+                this.setOnKeyPressed(event -> {
+            switch (event.getCode()) {
+                case ENTER:
+                    String pw = isShowing[0] ? passwordVisible.getText() : passwordHidden.getText();
+                    handleLogin(usernameField.getText(), pw);
+                    break;
+                default:
+                    break;
+            }
+        });
+
+
+        // ================= ADD COMPONENT ==================
+        loginCard.getChildren().addAll(
+                logoBox,
+                title,
+                labelUser,
+                usernameField,
+                passLabel,
+                pwStack,      
+                rememberMe,
+                loginBtn
+        );
+
         StackPane.setAlignment(loginCard, Pos.CENTER);
-
-        this.getChildren().addAll(background, cornerLogo, loginCard);
+        this.getChildren().addAll(background, loginCard);
     }
 
-    private Pane createBackground() {
-        Pane bgShapes = new Pane();
-
-        Circle topLeft = new Circle();
-        topLeft.radiusProperty().bind(this.widthProperty().multiply(0.10));
-        topLeft.centerXProperty().bind(this.widthProperty().multiply(0.38));
-        topLeft.centerYProperty().bind(this.heightProperty().multiply(-0.05));
-        topLeft.setFill(Color.web("#931717"));
-        topLeft.setMouseTransparent(true);
-
-        Circle smallBlue = new Circle();
-        smallBlue.radiusProperty().bind(this.widthProperty().multiply(0.02));
-        smallBlue.centerXProperty().bind(this.widthProperty().multiply(0.52));
-        smallBlue.centerYProperty().bind(this.heightProperty().multiply(0.20));
-        smallBlue.setFill(Color.web("#3C4C79"));
-        smallBlue.setMouseTransparent(true);
-
-        Circle topRight = new Circle();
-        topRight.radiusProperty().bind(this.widthProperty().multiply(0.10));
-        topRight.centerXProperty().bind(this.widthProperty().multiply(0.97));
-        topRight.centerYProperty().bind(this.heightProperty().multiply(0.07));
-        topRight.setFill(Color.web("#A42323"));
-        topRight.setMouseTransparent(true);
-
-        Circle bottomLeft = new Circle();
-        bottomLeft.radiusProperty().bind(this.widthProperty().multiply(0.15));
-        bottomLeft.centerXProperty().bind(this.widthProperty().multiply(0.13));
-        bottomLeft.centerYProperty().bind(this.heightProperty().multiply(1.05));
-        bottomLeft.setFill(Color.web("#A42323"));
-        bottomLeft.setMouseTransparent(true);
-
-        bgShapes.getChildren().addAll(topLeft, smallBlue, topRight, bottomLeft);
-
-        return bgShapes;
-    }
-
-    private void handleLogin(String username, String password) {
-        if (username.isEmpty() || password.isEmpty()) {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Login Gagal");
-            alert.setHeaderText(null);
-            alert.setContentText("Username dan password harus diisi!");
-            alert.showAndWait();
+    private void handleLogin(String user, String pw) {
+        if (user.isEmpty() || pw.isEmpty()) {
+            show("Login Gagal", "Username dan password harus diisi!");
             return;
         }
-        User user = LoginDAO.login(username, password);
-        
-        if(user != null){
-            String role = user.getRole().toLowerCase();
-            
-            if(role.equals("mahasiswa") || role.equals("dosen") || role.equals("karyawan")){
-                Scene newScene = new Scene(new UserPage(user), 1280, 720);
-                stage.setScene(newScene);
-            }
-            if(role.equals("admin")){
-//                Scene newScene = new Scene(new AdminPage(), 1280, 720);
-//                stage.setScene(newScene);
-            }
-            if(role.equals("superadmin")){
-//                Scene newScene = new Scene(new SuperAdminPage(), 1280, 720);
-//                stage.setScene(newScene);
-            }
-        }else {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Login Gagal");
-            alert.setHeaderText(null);
-            alert.setContentText("Username atau password salah!");
-            alert.showAndWait();
+
+        User u = LoginDAO.login(user, pw);
+        if (u != null) {
+            Scene scene = new Scene(new UserPage(u), 1280, 720);
+            stage.setScene(scene);
+        } else {
+            show("Login Gagal", "Username atau password salah!");
         }
+    }
+
+    private void show(String title, String msg) {
+        Alert a = new Alert(Alert.AlertType.ERROR);
+        a.setTitle(title);
+        a.setContentText(msg);
+        a.showAndWait();
     }
 }

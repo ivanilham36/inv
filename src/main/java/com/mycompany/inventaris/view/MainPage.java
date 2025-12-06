@@ -23,48 +23,45 @@ import javafx.scene.Scene;
 public class MainPage extends StackPane {
 
     private Stage stage;
+    
     public MainPage(Stage stage) {
         this.stage = stage;
-        System.out.println("CSS PATH: " + getClass().getResource("/css/main.css"));
-
         initializeUI();
     }
 
     private void initializeUI() {
-
         // Background Shape
         Pane bgShapes = new Pane();
 
         Circle topLeft = new Circle();
-    topLeft.radiusProperty().bind(this.widthProperty().multiply(0.13)); // 13% dari width
-    topLeft.centerXProperty().bind(this.widthProperty().multiply(0.39)); // 39% dari width
-    topLeft.centerYProperty().bind(this.heightProperty().multiply(-0.06)); // -6% dari height
-    topLeft.setFill(Color.web("#931717"));
-    topLeft.setMouseTransparent(true);
+        topLeft.radiusProperty().bind(this.widthProperty().multiply(0.13));
+        topLeft.centerXProperty().bind(this.widthProperty().multiply(0.39));
+        topLeft.centerYProperty().bind(this.heightProperty().multiply(-0.06));
+        topLeft.setFill(Color.web("#931717"));
+        topLeft.setMouseTransparent(true);
 
-    Circle smallBlue = new Circle();
-    smallBlue.radiusProperty().bind(this.widthProperty().multiply(0.027));
-    smallBlue.centerXProperty().bind(this.widthProperty().multiply(0.51));
-    smallBlue.centerYProperty().bind(this.heightProperty().multiply(0.19));
-    smallBlue.setFill(Color.web("#3C4C79"));
-    smallBlue.setMouseTransparent(true);
+        Circle smallBlue = new Circle();
+        smallBlue.radiusProperty().bind(this.widthProperty().multiply(0.027));
+        smallBlue.centerXProperty().bind(this.widthProperty().multiply(0.51));
+        smallBlue.centerYProperty().bind(this.heightProperty().multiply(0.19));
+        smallBlue.setFill(Color.web("#3C4C79"));
+        smallBlue.setMouseTransparent(true);
 
-    Circle topRight = new Circle();
-    topRight.radiusProperty().bind(this.widthProperty().multiply(0.12));
-    topRight.centerXProperty().bind(this.widthProperty().multiply(0.98));
-    topRight.centerYProperty().bind(this.heightProperty().multiply(0.06));
-    topRight.setFill(Color.web("#A42323"));
-    topRight.setMouseTransparent(true);
+        Circle topRight = new Circle();
+        topRight.radiusProperty().bind(this.widthProperty().multiply(0.12));
+        topRight.centerXProperty().bind(this.widthProperty().multiply(0.98));
+        topRight.centerYProperty().bind(this.heightProperty().multiply(0.06));
+        topRight.setFill(Color.web("#A42323"));
+        topRight.setMouseTransparent(true);
 
-    Circle bottomLeft = new Circle();
-    bottomLeft.radiusProperty().bind(this.widthProperty().multiply(0.18));
-    bottomLeft.centerXProperty().bind(this.widthProperty().multiply(0.14));
-    bottomLeft.centerYProperty().bind(this.heightProperty().multiply(1.04));
-    bottomLeft.setFill(Color.web("#A42323"));
-    bottomLeft.setMouseTransparent(true);
+        Circle bottomLeft = new Circle();
+        bottomLeft.radiusProperty().bind(this.widthProperty().multiply(0.18));
+        bottomLeft.centerXProperty().bind(this.widthProperty().multiply(0.14));
+        bottomLeft.centerYProperty().bind(this.heightProperty().multiply(1.04));
+        bottomLeft.setFill(Color.web("#A42323"));
+        bottomLeft.setMouseTransparent(true);
 
-    bgShapes.getChildren().addAll(topLeft, smallBlue, topRight, bottomLeft);
-
+        bgShapes.getChildren().addAll(topLeft, smallBlue, topRight, bottomLeft);
 
         // Navbar
         BorderPane navbar = new BorderPane();
@@ -72,7 +69,7 @@ public class MainPage extends StackPane {
 
         // LOGO (kiri)
         ImageView logo = new ImageView(
-                new Image(getClass().getResourceAsStream("/assets/logoAsa.png"))
+            new Image(getClass().getResourceAsStream("/assets/logoAsa.png"))
         );
         logo.setFitHeight(70);
         logo.setPreserveRatio(true);
@@ -80,10 +77,10 @@ public class MainPage extends StackPane {
 
         // MENU (tengah)
         HBox menu = new HBox(
-                new Label("Home"),
-                new Label("About"),
-                new Label("Guide"),
-                new Label("Contact")
+            new Label("Home"),
+            new Label("About"),
+            new Label("Guide"),
+            new Label("Contact")
         );
         menu.setSpacing(40);
         menu.setStyle("-fx-font-size: 16px; -fx-text-fill: #334155; -fx-font-weight: bold; -fx-padding: 0 0 0 300; -fx-font-family: 'Poppins';");
@@ -97,13 +94,12 @@ public class MainPage extends StackPane {
         );
 
         Label subtitle = new Label(
-                "Kelola dan pantau aset kampus secara\n" +
-                "efisien, cepat, dan terintegrasi."
+            "Kelola dan pantau aset kampus secara\n" +
+            "efisien, cepat, dan terintegrasi."
         );
         subtitle.setStyle(
             "-fx-font-size: 18px; -fx-font-weight: normal; -fx-text-fill: black; -fx-font-family: 'Poppins';"
         );
-
         subtitle.setLineSpacing(4);
 
         Button userBtn = new Button("User");
@@ -111,10 +107,8 @@ public class MainPage extends StackPane {
             "-fx-background-color: #A42323; -fx-text-fill: white; -fx-padding: 10 38; -fx-background-radius: 20; -fx-font-family: 'Poppins';"
         );
         userBtn.setOnAction(e -> {
-        LoginPage loginPage = new LoginPage(stage);
-        Scene newScene = new Scene(loginPage, 1280, 720);
-        newScene.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
-        stage.setScene(newScene);
+            Scene newScene = new Scene(new LoginPage(stage), 1280, 720);
+            stage.setScene(newScene);
         });
 
         Button adminBtn = new Button("Admin");
@@ -129,10 +123,9 @@ public class MainPage extends StackPane {
         leftContent.setSpacing(25);
         leftContent.setAlignment(Pos.CENTER_LEFT);
 
-
         // Logo
         ImageView heroImage = new ImageView(
-                new Image(getClass().getResourceAsStream("/assets/logoInv.png"))
+            new Image(getClass().getResourceAsStream("/assets/logoInv.png"))
         );
         heroImage.setFitWidth(420);
         heroImage.setPreserveRatio(true);
@@ -144,7 +137,6 @@ public class MainPage extends StackPane {
 
         VBox content = new VBox(navbar, hero);
         content.setAlignment(Pos.TOP_CENTER);
-
 
         // Stackpane
         this.getChildren().addAll(bgShapes, content);

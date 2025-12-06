@@ -9,7 +9,6 @@ package com.mycompany.inventaris.view;
  * @author Amy
  */
 
-import com.mycompany.inventaris.model.Barang;
 import com.mycompany.inventaris.model.User;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
@@ -27,45 +26,22 @@ import javafx.stage.StageStyle;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PeminjamanBarangPage extends BorderPane {
+public class PengembalianBarangPage extends BorderPane {
 
-    private TableView<BarangRow> table;
-    private List<Barang> allData;
-    private List<BarangRow> selectedItems = new ArrayList<>();
+    private TableView<PeminjamanRow> table;
+    private List<PeminjamanRow> allData;
+    private List<PeminjamanRow> selectedItems = new ArrayList<>();
     private User user;
 
-    public PeminjamanBarangPage(User user) {
+    public PengembalianBarangPage(User user) {
         this.user = user;
-        allData = List.of(
-            new Barang(1, "RL001", "Spidol", "Reusable", 25, "Baik", "Ruang A", "Tersedia"),
-            new Barang(2, "RL002", "Penghapus Papan Tulis", "Reusable", 25, "Baik", "Ruang B", "Tersedia"),
-            new Barang(3, "CL001", "Kertas HVS", "Consumable", 15, "Baik", "Ruang C", "Tersedia"),
-            new Barang(4, "NC001", "Webcam", "Non Consumable", 20, "Baik", "Lab", "Tersedia"),
-            new Barang(5, "NC002", "Proyektor", "Non Consumable", 20, "Baik", "Ruang D", "Tersedia")
-        );
+        allData = new ArrayList<>();
+        // Dummy data - barang yang sedang dipinjam
+        allData.add(new PeminjamanRow("RL001", "Spidol", "26/11/2025", "1 pcs"));
+        allData.add(new PeminjamanRow("NC002", "Proyektor", "25/11/2025", "1 pcs"));
+        allData.add(new PeminjamanRow("LP003", "Laptop Asus", "24/11/2025", "1 pcs"));
+        
         initializeUI();
-        this.sceneProperty().addListener((observable, oldScene, newScene) -> {
-         if (newScene != null) {
-        javafx.application.Platform.runLater(() -> {
-            javafx.scene.Node headerBg = table.lookup(".column-header-background");
-            if (headerBg != null) {
-                headerBg.setStyle("-fx-background-color: #B71C1C;");
-            }
-            
-            // Style setiap column header
-            table.lookupAll(".column-header").forEach(node -> {
-                node.setStyle("-fx-background-color: #B71C1C;");
-            });
-            table.lookupAll(".column-header > .label").forEach(node -> {
-                node.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
-            });
-            javafx.scene.Node filler = table.lookup(".filler");
-            if (filler != null) {
-                filler.setStyle("-fx-background-color: #B71C1C;");
-            }
-        });
-    }
-});
     }
 
     private void initializeUI() {
@@ -78,7 +54,7 @@ public class PeminjamanBarangPage extends BorderPane {
         mainContent.setStyle("-fx-background-color: #f8fafc;");
 
         // Header
-        Label title = new Label("PEMINJAMAN BARANG");
+        Label title = new Label("PENGEMBALIAN BARANG");
         title.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
 
         // Search Bar
@@ -105,8 +81,8 @@ public class PeminjamanBarangPage extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button meminjamBtn = new Button("Meminjam Barang");
-        meminjamBtn.setStyle(
+        Button kembalikanBtn = new Button("Kembalikan Barang");
+        kembalikanBtn.setStyle(
             "-fx-background-color: #3C4C79; " +
             "-fx-text-fill: white; " +
             "-fx-padding: 10 25; " +
@@ -115,90 +91,83 @@ public class PeminjamanBarangPage extends BorderPane {
             "-fx-font-weight: bold; " +
             "-fx-cursor: hand;"
         );
-        meminjamBtn.setOnAction(e -> showFormPopup());
+        kembalikanBtn.setOnAction(e -> showFormPopup());
 
-        topBar.getChildren().addAll(kategoriBox, spacer, meminjamBtn);
+        topBar.getChildren().addAll(kategoriBox, spacer, kembalikanBtn);
 
         // Table
         table = new TableView<>();
         table.setStyle("-fx-background-color: white; -fx-background-radius: 10;");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setTableMenuButtonVisible(false);
 
-        TableColumn<BarangRow, String> noCol = new TableColumn<>("No.");
+        TableColumn<PeminjamanRow, String> noCol = new TableColumn<>("No.");
         noCol.setMinWidth(50);
-        noCol.setMaxWidth(50);
+        noCol.setMaxWidth(80);
         noCol.setStyle("-fx-alignment: CENTER;");
         noCol.setCellValueFactory(data -> 
             new SimpleStringProperty(String.valueOf(table.getItems().indexOf(data.getValue()) + 1)));
 
-        TableColumn<BarangRow, String> idCol = new TableColumn<>("ID Barang");
-        idCol.setMinWidth(100);
-        idCol.setMaxWidth(120);
-        idCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().barang.getKode()));
+        TableColumn<PeminjamanRow, String> idCol = new TableColumn<>("ID Barang");
+        idCol.setMinWidth(120);
+        idCol.setStyle("-fx-alignment: CENTER-LEFT;");
+        idCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().idBarang));
 
-        TableColumn<BarangRow, String> nameCol = new TableColumn<>("Nama Barang");
-        nameCol.setMinWidth(200);
-        nameCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().barang.getNama()));
+        TableColumn<PeminjamanRow, String> namaCol = new TableColumn<>("Nama Barang");
+        namaCol.setMinWidth(200);
+        namaCol.setStyle("-fx-alignment: CENTER-LEFT;");
+        namaCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().namaBarang));
 
-        TableColumn<BarangRow, String> catCol = new TableColumn<>("Kategori");
-        catCol.setMinWidth(150);
-        catCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().barang.getKategori()));
+        TableColumn<PeminjamanRow, String> tanggalCol = new TableColumn<>("Tanggal Peminjaman");
+        tanggalCol.setMinWidth(150);
+        tanggalCol.setStyle("-fx-alignment: CENTER-LEFT;");
+        tanggalCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().tanggalPinjam));
 
-        TableColumn<BarangRow, String> stokCol = new TableColumn<>("Stok Barang");
-        stokCol.setMinWidth(100);
-        stokCol.setMaxWidth(120);
-        stokCol.setCellValueFactory(data -> 
-            new SimpleStringProperty(data.getValue().barang.getStok() + " pcs"));
+        TableColumn<PeminjamanRow, String> jumlahCol = new TableColumn<>("Jumlah Barang");
+        jumlahCol.setMinWidth(130);
+        jumlahCol.setStyle("-fx-alignment: CENTER-LEFT;");
+        jumlahCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().jumlahBarang));
 
-        TableColumn<BarangRow, Void> actionCol = new TableColumn<>("Aksi");
-        actionCol.setMinWidth(180);
-        actionCol.setMaxWidth(200);
-        actionCol.setCellFactory(col -> new TableCell<>() {
-            private HBox actionBox = new HBox(8);
-            private Button plusBtn = new Button("+");
-            private Label countLabel = new Label("0");
-            private Button minusBtn = new Button("-");
+        TableColumn<PeminjamanRow, Void> aksiCol = new TableColumn<>("Aksi");
+        aksiCol.setMinWidth(120);
+        aksiCol.setStyle("-fx-alignment: CENTER-LEFT;");
+        aksiCol.setCellFactory(col -> new TableCell<>() {
+            private CheckBox checkBox = new CheckBox();
             private Button infoBtn = new Button("⋮");
 
             {
-                plusBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #dc2626; -fx-font-size: 18px; -fx-font-weight: bold; -fx-cursor: hand;");
-                minusBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #264065; -fx-font-size: 18px; -fx-font-weight: bold; -fx-cursor: hand;");
-                countLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
-                infoBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-font-size: 18px; -fx-cursor: hand; -fx-padding: 0;");
+                checkBox.setStyle("-fx-cursor: hand;");
+                infoBtn.setStyle(
+                    "-fx-background-color: transparent; " +
+                    "-fx-text-fill: #64748b; " +
+                    "-fx-font-size: 18px; " +
+                    "-fx-cursor: hand; " +
+                    "-fx-padding: 0 5;"
+                );
 
-                plusBtn.setOnAction(e -> {
-                    BarangRow row = getTableView().getItems().get(getIndex());
-                    row.quantity++;
-                    countLabel.setText(String.valueOf(row.quantity));
-                    if (!selectedItems.contains(row)) selectedItems.add(row);
-                });
-
-                minusBtn.setOnAction(e -> {
-                    BarangRow row = getTableView().getItems().get(getIndex());
-                    if (row.quantity > 0) {
-                        row.quantity--;
-                        countLabel.setText(String.valueOf(row.quantity));
-                        if (row.quantity == 0) selectedItems.remove(row);
+                checkBox.setOnAction(e -> {
+                    PeminjamanRow row = getTableView().getItems().get(getIndex());
+                    if (checkBox.isSelected()) {
+                        if (!selectedItems.contains(row)) {
+                            selectedItems.add(row);
+                        }
+                    } else {
+                        selectedItems.remove(row);
                     }
                 });
 
                 infoBtn.setOnAction(e -> {
-                    BarangRow row = getTableView().getItems().get(getIndex());
+                    PeminjamanRow row = getTableView().getItems().get(getIndex());
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
                     alert.setTitle("Info Barang");
-                    alert.setHeaderText(row.barang.getNama());
+                    alert.setHeaderText(row.namaBarang);
                     alert.setContentText(
-                        "ID: " + row.barang.getKode() + "\n" +
-                        "Kategori: " + row.barang.getKategori() + "\n" +
-                        "Stok: " + row.barang.getStok() + " pcs\n" +
-                        "Kondisi: " + row.barang.getKondisi() + "\n" +
-                        "Lokasi: " + row.barang.getLokasi()
+                        "ID: " + row.idBarang + "\n" +
+                        "Tanggal Pinjam: " + row.tanggalPinjam + "\n" +
+                        "Jumlah: " + row.jumlahBarang
                     );
                     alert.showAndWait();
                 });
-
-                actionBox.getChildren().addAll(plusBtn, countLabel, minusBtn, infoBtn);
-                actionBox.setAlignment(Pos.CENTER);
             }
 
             @Override
@@ -207,40 +176,53 @@ public class PeminjamanBarangPage extends BorderPane {
                 if (empty) {
                     setGraphic(null);
                 } else {
-                    BarangRow row = getTableView().getItems().get(getIndex());
-                    countLabel.setText(String.valueOf(row.quantity));
-                    setGraphic(actionBox);
+                    HBox box = new HBox(10, checkBox, infoBtn);
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    setGraphic(box);
                 }
             }
         });
 
-        table.getColumns().addAll(noCol, idCol, nameCol, catCol, stokCol, actionCol);
-        allData.forEach(b -> table.getItems().add(new BarangRow(b)));
+        table.getColumns().addAll(noCol, idCol, namaCol, tanggalCol, jumlahCol, aksiCol);
+        allData.forEach(row -> table.getItems().add(row));
+
+        // Apply header styling
+        this.sceneProperty().addListener((observable, oldScene, newScene) -> {
+            if (newScene != null) {
+                javafx.application.Platform.runLater(() -> {
+                    javafx.scene.Node headerBg = table.lookup(".column-header-background");
+                    if (headerBg != null) {
+                        headerBg.setStyle("-fx-background-color: #B71C1C;");
+                    }
+                    
+                    table.lookupAll(".column-header").forEach(node -> {
+                        node.setStyle("-fx-background-color: #B71C1C;");
+                    });
+                    
+                    table.lookupAll(".column-header > .label").forEach(node -> {
+                        node.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+                    });
+                    
+                    javafx.scene.Node filler = table.lookup(".filler");
+                    if (filler != null) {
+                        filler.setStyle("-fx-background-color: #B71C1C;");
+                    }
+                });
+            }
+        });
 
         // Search functionality
         searchField.textProperty().addListener((obs, old, newVal) -> {
             table.getItems().clear();
             if (newVal.isEmpty()) {
-                allData.forEach(b -> table.getItems().add(new BarangRow(b)));
+                allData.forEach(row -> table.getItems().add(row));
             } else {
                 String keyword = newVal.toLowerCase();
                 allData.stream()
-                    .filter(b -> 
-                        b.getKode().toLowerCase().contains(keyword) ||
-                        b.getNama().toLowerCase().contains(keyword))
-                    .forEach(b -> table.getItems().add(new BarangRow(b)));
-            }
-        });
-
-        kategoriBox.setOnAction(e -> {
-            table.getItems().clear();
-            String selected = kategoriBox.getValue();
-            if (selected.equals("Semua Kategori")) {
-                allData.forEach(b -> table.getItems().add(new BarangRow(b)));
-            } else {
-                allData.stream()
-                    .filter(b -> b.getKategori().equals(selected))
-                    .forEach(b -> table.getItems().add(new BarangRow(b)));
+                    .filter(row -> 
+                        row.idBarang.toLowerCase().contains(keyword) ||
+                        row.namaBarang.toLowerCase().contains(keyword))
+                    .forEach(row -> table.getItems().add(row));
             }
         });
 
@@ -300,14 +282,14 @@ public class PeminjamanBarangPage extends BorderPane {
         });
         
         statusBtn.setOnAction(e -> {
-            Scene newScene = new Scene(new StatusPage(user), 1280, 720);
             Stage currentStage = (Stage) statusBtn.getScene().getWindow();
+            Scene newScene = new Scene(new StatusPage(user), 1280, 720);
             currentStage.setScene(newScene);
         });
         
         riwayatBtn.setOnAction(e -> {
-            Scene newScene = new Scene(new RiwayatPage(user), 1280, 720);
             Stage currentStage = (Stage) riwayatBtn.getScene().getWindow();
+            Scene newScene = new Scene(new RiwayatPage(user), 1280, 720);
             currentStage.setScene(newScene);
         });
 
@@ -370,7 +352,7 @@ public class PeminjamanBarangPage extends BorderPane {
             Alert alert = new Alert(Alert.AlertType.WARNING);
             alert.setTitle("Peringatan");
             alert.setHeaderText(null);
-            alert.setContentText("Silakan pilih barang terlebih dahulu!");
+            alert.setContentText("Silakan pilih barang yang akan dikembalikan terlebih dahulu!");
             alert.showAndWait();
             return;
         }
@@ -409,7 +391,7 @@ public class PeminjamanBarangPage extends BorderPane {
         HBox.setHgrow(rightSpacer, Priority.ALWAYS);
         header.getChildren().addAll(leftSpacer, logo, rightSpacer, closeBtn);
 
-        Label title = new Label("Formulir Peminjaman");
+        Label title = new Label("Formulir Pengembalian");
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
 
         VBox fields = new VBox(12);
@@ -417,23 +399,22 @@ public class PeminjamanBarangPage extends BorderPane {
         TextField namaPeminjam = new TextField(user.getNama());
         VBox namaField = createField("Nama Peminjam", namaPeminjam);
 
-        TextField lokasiPengambilan = new TextField();
-        lokasiPengambilan.setPromptText("Ketik lokasi disini");
-        VBox lokasiField = createField("Lokasi Pengiriman", lokasiPengambilan);
+        TextField lokasiPengembalian = new TextField();
+        lokasiPengembalian.setPromptText("Ketik lokasi disini");
+        VBox lokasiField = createField("Lokasi Pengembalian", lokasiPengembalian);
 
         TextField namaKodeBarang = new TextField();
         String barangList = selectedItems.stream()
-            .map(r -> r.barang.getNama() + " (" + r.barang.getKode() + ")")
+            .map(r -> r.namaBarang + " (" + r.idBarang + ")")
             .reduce((a, b) -> a + ", " + b)
             .orElse("");
         namaKodeBarang.setText(barangList);
+        namaKodeBarang.setEditable(false);
         VBox namaKodeField = createField("Nama & Kode Barang", namaKodeBarang);
 
         ComboBox<String> jenisBarang = new ComboBox<>();
         jenisBarang.getItems().addAll("Reusable", "Consumable", "Non Consumable");
-        if (!selectedItems.isEmpty()) {
-            jenisBarang.setValue(selectedItems.get(0).barang.getKategori());
-        }
+        jenisBarang.setValue("Reusable");
         jenisBarang.setStyle(
             "-fx-background-color: white; " +
             "-fx-border-color: #e5e7eb; " +
@@ -444,7 +425,7 @@ public class PeminjamanBarangPage extends BorderPane {
         VBox jenisField = createFieldCombo("Jenis Barang", jenisBarang);
 
         TextField jumlahBarang = new TextField();
-        jumlahBarang.setText(String.valueOf(selectedItems.stream().mapToInt(r -> r.quantity).sum()) + " pcs");
+        jumlahBarang.setText(selectedItems.get(0).jumlahBarang);
         jumlahBarang.setEditable(false);
         VBox jumlahField = createField("Jumlah Barang", jumlahBarang);
 
@@ -464,7 +445,7 @@ public class PeminjamanBarangPage extends BorderPane {
 
         fields.getChildren().addAll(namaField, lokasiField, namaKodeField, jenisField, jumlahField, statusBox);
 
-        Button submitBtn = new Button("Ajukan Peminjaman");
+        Button submitBtn = new Button("Ajukan Pengembalian");
         submitBtn.setStyle(
             "-fx-background-color: #3C4C79; " +
             "-fx-text-fill: white; " +
@@ -476,22 +457,22 @@ public class PeminjamanBarangPage extends BorderPane {
             "-fx-pref-width: 350;"
         );
         submitBtn.setOnAction(e -> {
-    if (namaPeminjam.getText().isEmpty() || lokasiPengambilan.getText().isEmpty()) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Error");
-        alert.setHeaderText(null);
-        alert.setContentText("Semua field harus diisi!");
-        alert.showAndWait();
-    } else {
-        popup.hide();
-        javafx.application.Platform.runLater(() -> {
-            try {
-                Thread.sleep(100); // Delay 100ms
-            } catch (InterruptedException ex) {
-                ex.printStackTrace();
-            }
-            showSuccessPopup();
-             });
+            if (namaPeminjam.getText().isEmpty() || lokasiPengembalian.getText().isEmpty()) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Error");
+                alert.setHeaderText(null);
+                alert.setContentText("Semua field harus diisi!");
+                alert.showAndWait();
+            } else {
+                popup.hide();
+                javafx.application.Platform.runLater(() -> {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    }
+                    showSuccessPopup();
+                });
             }
         });
 
@@ -551,7 +532,7 @@ public class PeminjamanBarangPage extends BorderPane {
         Label title = new Label("Sukses !!");
         title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
 
-        Label message = new Label("Terima kasih telah meminjam barang,\nmohon ditunggu ya !!");
+        Label message = new Label("Terima kasih telah mengembalikan barang!");
         message.setStyle("-fx-font-size: 13px; -fx-text-fill: #64748b; -fx-text-alignment: center;");
         message.setWrapText(true);
 
@@ -572,8 +553,8 @@ public class PeminjamanBarangPage extends BorderPane {
             currentStage.setScene(newScene);
         });
 
-        Button statusBtn = new Button("Lihat Status Barang");
-        statusBtn.setStyle(
+        Button riwayatBtn = new Button("Lihat Riwayat");
+        riwayatBtn.setStyle(
             "-fx-background-color: #dc2626; " +
             "-fx-text-fill: white; " +
             "-fx-padding: 10 25; " +
@@ -582,13 +563,14 @@ public class PeminjamanBarangPage extends BorderPane {
             "-fx-font-weight: bold; " +
             "-fx-cursor: hand;"
         );
-        statusBtn.setOnAction(e -> {
-            Scene newScene = new Scene(new StatusPage(user), 1280, 720);
-            Stage currentStage = (Stage) statusBtn.getScene().getWindow();
+        riwayatBtn.setOnAction(e -> {
+            popup.close();
+            Stage currentStage = (Stage) this.getScene().getWindow();
+            Scene newScene = new Scene(new RiwayatPage(user), 1280, 720);
             currentStage.setScene(newScene);
         });
 
-        HBox btnBox = new HBox(15, okBtn, statusBtn);
+        HBox btnBox = new HBox(15, okBtn, riwayatBtn);
         btnBox.setAlignment(Pos.CENTER);
 
         container.getChildren().addAll(icon, title, message, btnBox);
@@ -601,17 +583,22 @@ public class PeminjamanBarangPage extends BorderPane {
         popup.setScene(scene);
         popup.showAndWait();
 
+        // Reset selection
         selectedItems.clear();
-        table.getItems().forEach(row -> row.quantity = 0);
         table.refresh();
     }
 
-    static class BarangRow {
-        Barang barang;
-        int quantity = 0;
+    static class PeminjamanRow {
+        String idBarang;
+        String namaBarang;
+        String tanggalPinjam;
+        String jumlahBarang;
 
-        BarangRow(Barang barang) {
-            this.barang = barang;
+        PeminjamanRow(String idBarang, String namaBarang, String tanggalPinjam, String jumlahBarang) {
+            this.idBarang = idBarang;
+            this.namaBarang = namaBarang;
+            this.tanggalPinjam = tanggalPinjam;
+            this.jumlahBarang = jumlahBarang;
         }
     }
 }

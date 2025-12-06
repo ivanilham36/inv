@@ -26,19 +26,19 @@ import javafx.stage.StageStyle;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RiwayatPage extends BorderPane {
+public class StatusPage extends BorderPane {
     
-    private TableView<PeminjamanData> table;
-    private List<PeminjamanData> allData;
+    private TableView<StatusBarangData> table;
+    private List<StatusBarangData> allData;
     private User user;
     
-    public RiwayatPage(User user) {
+    public StatusPage(User user) {
         this.user = user;
         allData = new ArrayList<>();
         // Dummy data
-        allData.add(new PeminjamanData("PMJ001", "Medi Pribadi", "Spidol (RL001)", "26/11/2025", "26/11/2025", "1 pcs", "Dikembalikan"));
-        allData.add(new PeminjamanData("PMJ002", "Ahmad Fauzi", "Laptop Asus", "25/11/2025", "27/11/2025", "1 pcs", "Dipinjam"));
-        allData.add(new PeminjamanData("PMJ003", "Siti Nurhaliza", "Proyektor (NC002)", "24/11/2025", "26/11/2025", "1 pcs", "Dikembalikan"));
+        allData.add(new StatusBarangData("RL001", "Spidol", "Reusable", "1 pcs", "Belum Diverifikasi"));
+        allData.add(new StatusBarangData("NC002", "Proyektor", "Electronics", "1 pcs", "Diverifikasi"));
+        allData.add(new StatusBarangData("LP003", "Laptop Asus", "Electronics", "1 pcs", "Ditolak"));
         
         initializeUI();
     }
@@ -53,7 +53,7 @@ public class RiwayatPage extends BorderPane {
         mainContent.setStyle("-fx-background-color: #f8fafc;");
 
         // Header
-        Label title = new Label("RIWAYAT BARANG");
+        Label title = new Label("STATUS BARANG");
         title.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
 
         // Search Bar
@@ -68,12 +68,12 @@ public class RiwayatPage extends BorderPane {
             "-fx-padding: 10 15;"
         );
 
-        // Top Bar
+        // Top Bar with Filter
         HBox topBar = new HBox(15);
         topBar.setAlignment(Pos.CENTER_LEFT);
 
         ComboBox<String> kategoriBox = new ComboBox<>();
-        kategoriBox.getItems().addAll("Semua Kategori", "Dipinjam", "Dikembalikan");
+        kategoriBox.getItems().addAll("Semua Kategori", "Reusable", "Electronics", "Furniture");
         kategoriBox.setValue("Semua Kategori");
         kategoriBox.setStyle("-fx-font-size: 13px; -fx-padding: 6;");
 
@@ -82,44 +82,41 @@ public class RiwayatPage extends BorderPane {
         // Table
         table = new TableView<>();
         table.setStyle("-fx-background-color: white; -fx-background-radius: 10;");
-        table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setTableMenuButtonVisible(false);
+        table.setPlaceholder(new Label("TIDAK ADA STATUS BARANG."));
 
-        TableColumn<PeminjamanData, String> noCol = new TableColumn<>("No.");
+        TableColumn<StatusBarangData, String> noCol = new TableColumn<>("No.");
         noCol.setMinWidth(50);
-        noCol.setMaxWidth(50);
+        noCol.setMaxWidth(80);
         noCol.setStyle("-fx-alignment: CENTER;");
         noCol.setCellValueFactory(data -> 
             new SimpleStringProperty(String.valueOf(table.getItems().indexOf(data.getValue()) + 1)));
 
-        TableColumn<PeminjamanData, String> idCol = new TableColumn<>("ID Peminjaman");
+        TableColumn<StatusBarangData, String> idCol = new TableColumn<>("ID Barang");
         idCol.setMinWidth(120);
         idCol.setMaxWidth(150);
-        idCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getIdPeminjaman()));
+        idCol.setStyle("-fx-alignment: CENTER-LEFT;");
+        idCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getIdBarang()));
 
-        TableColumn<PeminjamanData, String> namaCol = new TableColumn<>("Nama Peminjam");
-        namaCol.setMinWidth(150);
-        namaCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNamaPeminjam()));
+        TableColumn<StatusBarangData, String> namaCol = new TableColumn<>("Nama Barang");
+        namaCol.setMinWidth(180);
+        namaCol.setStyle("-fx-alignment: CENTER-LEFT;");
+        namaCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNamaBarang()));
 
-        TableColumn<PeminjamanData, String> barangCol = new TableColumn<>("Nama & Kode Barang");
-        barangCol.setMinWidth(180);
-        barangCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNamaBarang()));
+        TableColumn<StatusBarangData, String> kategoriCol = new TableColumn<>("Kategori");
+        kategoriCol.setMinWidth(150);
+        kategoriCol.setStyle("-fx-alignment: CENTER-LEFT;");
+        kategoriCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getKategori()));
 
-        TableColumn<PeminjamanData, String> tglPinjamCol = new TableColumn<>("Tanggal Peminjaman");
-        tglPinjamCol.setMinWidth(140);
-        tglPinjamCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTanggalPinjam()));
-
-        TableColumn<PeminjamanData, String> tglKembaliCol = new TableColumn<>("Tanggal Pengembalian");
-        tglKembaliCol.setMinWidth(150);
-        tglKembaliCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTanggalKembali()));
-
-        TableColumn<PeminjamanData, String> jumlahCol = new TableColumn<>("Jumlah Barang");
-        jumlahCol.setMinWidth(120);
-        jumlahCol.setMaxWidth(130);
+        TableColumn<StatusBarangData, String> jumlahCol = new TableColumn<>("Jumlah Barang");
+        jumlahCol.setMinWidth(130);
+        jumlahCol.setStyle("-fx-alignment: CENTER-LEFT;");
         jumlahCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getJumlahBarang()));
 
-        TableColumn<PeminjamanData, String> statusCol = new TableColumn<>("Status");
-        statusCol.setMinWidth(130);
-        statusCol.setMaxWidth(150);
+        TableColumn<StatusBarangData, String> statusCol = new TableColumn<>("Status");
+        statusCol.setMinWidth(180);
+        statusCol.setStyle("-fx-alignment: CENTER-LEFT;");
         statusCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String status, boolean empty) {
@@ -129,7 +126,8 @@ public class RiwayatPage extends BorderPane {
                     setText(null);
                 } else {
                     Label statusLabel = new Label(status);
-                    if (status.equals("Dipinjam")) {
+                    
+                    if (status.equals("Belum Diverifikasi")) {
                         statusLabel.setStyle(
                             "-fx-background-color: #fef3c7; " +
                             "-fx-text-fill: #92400e; " +
@@ -138,7 +136,7 @@ public class RiwayatPage extends BorderPane {
                             "-fx-font-size: 11px; " +
                             "-fx-font-weight: bold;"
                         );
-                    } else {
+                    } else if (status.equals("Diverifikasi")) {
                         statusLabel.setStyle(
                             "-fx-background-color: #dcfce7; " +
                             "-fx-text-fill: #166534; " +
@@ -147,7 +145,17 @@ public class RiwayatPage extends BorderPane {
                             "-fx-font-size: 11px; " +
                             "-fx-font-weight: bold;"
                         );
+                    } else if (status.equals("Ditolak")) {
+                        statusLabel.setStyle(
+                            "-fx-background-color: #fee2e2; " +
+                            "-fx-text-fill: #991b1b; " +
+                            "-fx-padding: 5 15; " +
+                            "-fx-background-radius: 12; " +
+                            "-fx-font-size: 11px; " +
+                            "-fx-font-weight: bold;"
+                        );
                     }
+                    
                     HBox box = new HBox(statusLabel);
                     box.setAlignment(Pos.CENTER_LEFT);
                     setGraphic(box);
@@ -157,7 +165,7 @@ public class RiwayatPage extends BorderPane {
         });
         statusCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatus()));
 
-        table.getColumns().addAll(noCol, idCol, namaCol, barangCol, tglPinjamCol, tglKembaliCol, jumlahCol, statusCol);
+        table.getColumns().addAll(noCol, idCol, namaCol, kategoriCol, jumlahCol, statusCol);
         allData.forEach(data -> table.getItems().add(data));
 
         // Apply header styling
@@ -194,14 +202,14 @@ public class RiwayatPage extends BorderPane {
                 String keyword = newVal.toLowerCase();
                 allData.stream()
                     .filter(data -> 
-                        data.getIdPeminjaman().toLowerCase().contains(keyword) ||
-                        data.getNamaPeminjam().toLowerCase().contains(keyword) ||
-                        data.getNamaBarang().toLowerCase().contains(keyword))
+                        data.getIdBarang().toLowerCase().contains(keyword) ||
+                        data.getNamaBarang().toLowerCase().contains(keyword) ||
+                        data.getKategori().toLowerCase().contains(keyword))
                     .forEach(data -> table.getItems().add(data));
             }
         });
 
-        // Filter by status
+        // Filter by kategori
         kategoriBox.setOnAction(e -> {
             table.getItems().clear();
             String selected = kategoriBox.getValue();
@@ -209,7 +217,7 @@ public class RiwayatPage extends BorderPane {
                 allData.forEach(data -> table.getItems().add(data));
             } else {
                 allData.stream()
-                    .filter(data -> data.getStatus().equals(selected))
+                    .filter(data -> data.getKategori().equals(selected))
                     .forEach(data -> table.getItems().add(data));
             }
         });
@@ -218,6 +226,10 @@ public class RiwayatPage extends BorderPane {
 
         this.setLeft(sidebar);
         this.setCenter(mainContent);
+    }
+
+    private void showActionMenu(Button button, StatusBarangData data) {
+        // Method ini tidak digunakan lagi karena tombol menu sudah dihapus
     }
 
     private VBox createSidebar() {
@@ -260,17 +272,18 @@ public class RiwayatPage extends BorderPane {
 
         VBox menuBox = new VBox(8);
         Button dashboardBtn = createMenuButton("🏠  Dashboard", false);
-        Button statusBtn = createMenuButton("📊  Status", false);
-        Button riwayatBtn = createMenuButton("🕐  Riwayat", true);
+        Button statusBtn = createMenuButton("📊  Status", true);
+        Button riwayatBtn = createMenuButton("🕐  Riwayat", false);
 
         dashboardBtn.setOnAction(e -> {
             Stage currentStage = (Stage) dashboardBtn.getScene().getWindow();
             Scene newScene = new Scene(new UserPage(user), 1280, 720);
             currentStage.setScene(newScene);
         });
-        statusBtn.setOnAction(e -> {
-            Scene newScene = new Scene(new StatusPage(user), 1280, 720);
-            Stage currentStage = (Stage) statusBtn.getScene().getWindow();
+
+        riwayatBtn.setOnAction(e -> {
+            Stage currentStage = (Stage) riwayatBtn.getScene().getWindow();
+            Scene newScene = new Scene(new RiwayatPage(user), 1280, 720);
             currentStage.setScene(newScene);
         });
 
@@ -328,122 +341,29 @@ public class RiwayatPage extends BorderPane {
         return btn;
     }
 
-    private void showDetailPopup(PeminjamanData data) {
-        Stage popup = new Stage();
-        popup.initModality(Modality.APPLICATION_MODAL);
-        popup.initStyle(StageStyle.TRANSPARENT);
-
-        VBox container = new VBox(20);
-        container.setPadding(new Insets(30));
-        container.setAlignment(Pos.TOP_CENTER);
-        container.setStyle(
-            "-fx-background-color: white; " +
-            "-fx-background-radius: 12;"
-        );
-
-        ImageView logo = new ImageView(new Image(getClass().getResourceAsStream("/assets/logoAsa.png")));
-        logo.setFitHeight(40);
-        logo.setPreserveRatio(true);
-
-        Button closeBtn = new Button("×");
-        closeBtn.setStyle(
-            "-fx-background-color: transparent; " +
-            "-fx-text-fill: #999; " +
-            "-fx-font-size: 24px; " +
-            "-fx-cursor: hand;"
-        );
-        closeBtn.setOnAction(e -> popup.close());
-
-        HBox header = new HBox();
-        header.setAlignment(Pos.CENTER);
-        Region leftSpacer = new Region();
-        HBox.setHgrow(leftSpacer, Priority.ALWAYS);
-        Region rightSpacer = new Region();
-        HBox.setHgrow(rightSpacer, Priority.ALWAYS);
-        header.getChildren().addAll(leftSpacer, logo, rightSpacer, closeBtn);
-
-        Label title = new Label("Detail Peminjaman");
-        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
-
-        VBox details = new VBox(12);
-        details.getChildren().addAll(
-            createDetailRow("ID Peminjaman", data.getIdPeminjaman()),
-            createDetailRow("Nama Peminjam", data.getNamaPeminjam()),
-            createDetailRow("Nama & Kode Barang", data.getNamaBarang()),
-            createDetailRow("Tanggal Peminjaman", data.getTanggalPinjam()),
-            createDetailRow("Tanggal Pengembalian", data.getTanggalKembali()),
-            createDetailRow("Jumlah Barang", data.getJumlahBarang()),
-            createDetailRow("Status", data.getStatus())
-        );
-
-        Button okBtn = new Button("Tutup");
-        okBtn.setStyle(
-            "-fx-background-color: #3C4C79; " +
-            "-fx-text-fill: white; " +
-            "-fx-padding: 10 30; " +
-            "-fx-background-radius: 8; " +
-            "-fx-font-size: 13px; " +
-            "-fx-font-weight: bold; " +
-            "-fx-cursor: hand;"
-        );
-        okBtn.setOnAction(e -> popup.close());
-
-        container.getChildren().addAll(header, title, details, okBtn);
-
-        StackPane root = new StackPane(container);
-        root.setStyle("-fx-background-color: rgba(0, 0, 0, 0.4);");
-
-        Scene scene = new Scene(root, 450, 480);
-        scene.setFill(Color.TRANSPARENT);
-        popup.setScene(scene);
-        popup.show();
-    }
-
-    private VBox createDetailRow(String label, String value) {
-        VBox box = new VBox(5);
-        Label lblLabel = new Label(label);
-        lblLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: bold;");
-        
-        Label lblValue = new Label(value);
-        lblValue.setStyle(
-            "-fx-font-size: 13px; " +
-            "-fx-text-fill: #1e293b; " +
-            "-fx-padding: 8 10; " +
-            "-fx-background-color: #f8fafc; " +
-            "-fx-background-radius: 6;"
-        );
-        
-        box.getChildren().addAll(lblLabel, lblValue);
-        return box;
-    }
-
-    // Inner class untuk data peminjaman
-    public static class PeminjamanData {
-        private String idPeminjaman;
-        private String namaPeminjam;
+    // Inner class untuk data status barang
+    public static class StatusBarangData {
+        private String idBarang;
         private String namaBarang;
-        private String tanggalPinjam;
-        private String tanggalKembali;
+        private String kategori;
         private String jumlahBarang;
         private String status;
         
-        public PeminjamanData(String idPeminjaman, String namaPeminjam, String namaBarang, 
-                             String tanggalPinjam, String tanggalKembali, String jumlahBarang, String status) {
-            this.idPeminjaman = idPeminjaman;
-            this.namaPeminjam = namaPeminjam;
+        public StatusBarangData(String idBarang, String namaBarang, String kategori, 
+                               String jumlahBarang, String status) {
+            this.idBarang = idBarang;
             this.namaBarang = namaBarang;
-            this.tanggalPinjam = tanggalPinjam;
-            this.tanggalKembali = tanggalKembali;
+            this.kategori = kategori;
             this.jumlahBarang = jumlahBarang;
             this.status = status;
         }
         
-        public String getIdPeminjaman() { return idPeminjaman; }
-        public String getNamaPeminjam() { return namaPeminjam; }
+        public String getIdBarang() { return idBarang; }
         public String getNamaBarang() { return namaBarang; }
-        public String getTanggalPinjam() { return tanggalPinjam; }
-        public String getTanggalKembali() { return tanggalKembali; }
+        public String getKategori() { return kategori; }
         public String getJumlahBarang() { return jumlahBarang; }
         public String getStatus() { return status; }
+        
+        public void setStatus(String status) { this.status = status; }
     }
 }
