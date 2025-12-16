@@ -198,9 +198,24 @@ public class UserPage extends BorderPane {
             currentStage.setScene(newScene);
         });
         
+        Button penggantianBtn = new Button("PENGGANTIAN BARANG");
+        penggantianBtn.setStyle(
+            "-fx-background-color: #A42323;" +
+            "-fx-text-fill: white;" +
+            "-fx-font-size: 13px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-padding: 10 26;" +
+            "-fx-background-radius: 8;" +
+            "-fx-cursor: hand;"
+        );
 
+        penggantianBtn.setOnAction(e -> {
+            Stage currentStage = (Stage) penggantianBtn.getScene().getWindow();
+            Scene newScene = new Scene(new PenggantianBarangPage(user), 1280, 720);
+            currentStage.setScene(newScene);
+        });
 
-        HBox buttonBox = new HBox(30, peminjamanBtn, pengembalianBtn);
+        HBox buttonBox = new HBox(30, peminjamanBtn, pengembalianBtn, penggantianBtn);
         buttonBox.setAlignment(Pos.CENTER);
 
         centerBox.getChildren().addAll(halo, buttonBox);

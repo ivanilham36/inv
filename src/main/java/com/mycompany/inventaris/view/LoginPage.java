@@ -17,6 +17,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import java.util.prefs.Preferences;
 
 import com.mycompany.inventaris.dao.LoginDAO;
 import com.mycompany.inventaris.model.User;
@@ -24,6 +25,11 @@ import com.mycompany.inventaris.model.User;
 public class LoginPage extends StackPane {
 
     private Stage stage;
+    private CheckBox rememberMe;
+    private TextField usernameField;
+    private PasswordField passwordHidden;
+    private TextField passwordVisible;
+
 
     public LoginPage(Stage stage) {
         this.stage = stage;
@@ -35,6 +41,9 @@ public class LoginPage extends StackPane {
 
         initializeUI();
     }
+    
+    private Preferences prefs =
+        Preferences.userNodeForPackage(LoginPage.class);
 
     private void initializeUI() {
 
@@ -92,7 +101,7 @@ public class LoginPage extends StackPane {
         Label labelUser = new Label("Nama Pengguna");
         labelUser.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
 
-        TextField usernameField = new TextField();
+        usernameField = new TextField();
         usernameField.setPromptText("Ketik username");
         usernameField.setStyle(
                 "-fx-font-family: 'Poppins';" +
@@ -111,7 +120,7 @@ public class LoginPage extends StackPane {
         StackPane pwStack = new StackPane();
         pwStack.setAlignment(Pos.CENTER_LEFT);
 
-        PasswordField passwordHidden = new PasswordField();
+        passwordHidden = new PasswordField();
         passwordHidden.setPromptText("Masukkan password");
         passwordHidden.setStyle(
                 "-fx-background-color: white;" +
@@ -122,7 +131,7 @@ public class LoginPage extends StackPane {
                 "-fx-font-size: 12px;"
         );
 
-        TextField passwordVisible = new TextField();
+        passwordVisible = new TextField();
         passwordVisible.setPromptText("Masukkan password");
         passwordVisible.setStyle(
                 "-fx-background-color: white;" +
@@ -170,9 +179,17 @@ public class LoginPage extends StackPane {
         pwStack.getChildren().addAll(passwordHidden, passwordVisible, toggleBtn);
 
 
-        CheckBox rememberMe = new CheckBox("Ingat saya");
+        rememberMe = new CheckBox("Ingat saya");
         rememberMe.setStyle("-fx-font-size: 10px; -fx-text-fill: #64748b;");
+        
+        // Load Username
+        String savedUsername = prefs.get("remember_username", "");
+        boolean remember = prefs.getBoolean("remember_checked", false);
 
+        if (remember) {
+            usernameField.setText(savedUsername);
+            rememberMe.setSelected(true);
+        }
 
         //BUTTON LOGIN 
         Button loginBtn = new Button("MASUK");
@@ -217,6 +234,18 @@ public class LoginPage extends StackPane {
 
         StackPane.setAlignment(loginCard, Pos.CENTER);
         this.getChildren().addAll(background, loginCard);
+        
+        this.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                javafx.application.Platform.runLater(() -> {
+                    if (!usernameField.getText().isEmpty()) {
+                            passwordHidden.requestFocus();
+                        } else {
+                            usernameField.requestFocus();
+                        }
+                });
+            }
+        });
     }
 
     private void handleLogin(String user, String pw) {
@@ -226,10 +255,19 @@ public class LoginPage extends StackPane {
         }
 
         User u = LoginDAO.login(user, pw);
-        if (u == null) {
+        if (u == null) {    
             show("Login Gagal", "Username atau password salah!");
             return;
         } 
+        
+        if (rememberMe.isSelected()) {
+            prefs.put("remember_username", user);
+            prefs.putBoolean("remember_checked", true);
+        } else {
+            prefs.remove("remember_username");
+            prefs.putBoolean("remember_checked", false);
+        }
+
         Scene scene;
         switch (u.getRole().toLowerCase()){
             case "mahasiswa":

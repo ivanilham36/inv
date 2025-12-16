@@ -281,15 +281,8 @@ public class PengembalianBarangPage extends BorderPane {
         Circle clipCircle = new Circle(20, 20, 20);
         userImage.setClip(clipCircle);
 
-        String fullName = user.getNama();
-        String[] parts = fullName.split(" ");
-        
-        String displayName = parts[0];
-        if(parts.length> 1){
-            displayName += " " + parts[1];
-        }
-        Label nameLabel = new Label(displayName.toUpperCase());
-        nameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
+        Label nameLabel = new Label(user.getNama());
+        nameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
         
         Label roleLabel = new Label(user.getRole().toUpperCase());
         roleLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #9ca3af;");
