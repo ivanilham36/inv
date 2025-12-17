@@ -10,6 +10,8 @@ package com.mycompany.inventaris.view;
  */
 
 import com.mycompany.inventaris.model.User;
+import com.mycompany.inventaris.model.AuditLog;
+import com.mycompany.inventaris.dao.AuditTrailDAO;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -41,22 +43,7 @@ public class AuditTrailPage extends BorderPane {
     
     public AuditTrailPage(User superadmin) {
         this.superadmin = superadmin;
-        allData = new ArrayList<>();
-        
-        // Dummy data - nanti diganti dari database
-        allData.add(new AuditLog("2025-12-15 14:30:25", "Nadia Admin", "LOGIN", "Pengguna berhasil login", "192.168.1.100", "BERHASIL"));
-        allData.add(new AuditLog("2025-12-15 14:32:10", "Nadia Admin", "TAMBAH_USER", "Menambahkan pengguna baru: Ivan Muhammad Ilham", "192.168.1.100", "BERHASIL"));
-        allData.add(new AuditLog("2025-12-15 14:35:45", "Nadia Admin", "EDIT_BARANG", "Mengubah barang: Spidol (RL001)", "192.168.1.100", "BERHASIL"));
-        allData.add(new AuditLog("2025-12-15 14:40:12", "Ahmad Petugas", "HAPUS_BARANG", "Menghapus barang: Penghapus (RL002)", "192.168.1.105", "BERHASIL"));
-        allData.add(new AuditLog("2025-12-15 14:45:30", "Siti Dosen", "LOGIN", "Percobaan login gagal", "192.168.1.110", "GAGAL"));
-        allData.add(new AuditLog("2025-12-15 15:00:00", "Medi Mahasiswa", "PEMINJAMAN", "Meminjam barang: Spidol (RL001) - 1 pcs", "192.168.1.115", "BERHASIL"));
-        allData.add(new AuditLog("2025-12-15 15:10:22", "Ahmad Petugas", "TAMBAH_BARANG", "Menambahkan barang baru: Laptop Asus", "192.168.1.105", "BERHASIL"));
-        allData.add(new AuditLog("2025-12-15 15:15:30", "Fadlia Mahasiswa", "PENGGUNAAN", "Menggunakan barang: Proyektor (NC002) di Ruang 301", "192.168.1.120", "BERHASIL"));
-        allData.add(new AuditLog("2025-12-15 15:25:15", "Nadia Admin", "LOGOUT", "Pengguna keluar dari sistem", "192.168.1.100", "BERHASIL"));
-        allData.add(new AuditLog("2025-12-15 15:30:45", "Medi Mahasiswa", "PENGEMBALIAN", "Mengembalikan barang: Spidol (RL001) - 1 pcs", "192.168.1.115", "BERHASIL"));
-        allData.add(new AuditLog("2025-12-15 15:45:00", "Raipa Petugas", "VERIFIKASI", "Memverifikasi barang: Laptop HP (LP003)", "192.168.1.108", "BERHASIL"));
-        allData.add(new AuditLog("2025-12-15 16:00:10", "Nadia Admin", "EKSPOR_DATA", "Mengekspor data pengguna ke CSV", "192.168.1.100", "BERHASIL"));
-        
+        allData = AuditTrailDAO.getAll();
         initializeUI();
     }
 
@@ -712,31 +699,4 @@ public class AuditTrailPage extends BorderPane {
         }
 
         return btn;
-    }
-
-    // Inner class for AuditLog
-    public static class AuditLog {
-        private String timestamp;
-        private String userName;
-        private String action;
-        private String description;
-        private String ipAddress;
-        private String status;
-        
-        public AuditLog(String timestamp, String userName, String action, String description, String ipAddress, String status) {
-            this.timestamp = timestamp;
-            this.userName = userName;
-            this.action = action;
-            this.description = description;
-            this.ipAddress = ipAddress;
-            this.status = status;
-        }
-        
-        public String getTimestamp() { return timestamp; }
-        public String getUserName() { return userName; }
-        public String getAction() { return action; }
-        public String getDescription() { return description; }
-        public String getIpAddress() { return ipAddress; }
-        public String getStatus() { return status; }
-    }
-}
+    }}
