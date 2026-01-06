@@ -267,14 +267,6 @@ noCol.setCellValueFactory(cell ->
     )
 );
 
-
-TableColumn<LaporanPenggunaanDTO, String> idCol =
-        new TableColumn<>("ID Penggunaan");
-        idCol.setMinWidth(120);
-idCol.setCellValueFactory(cell ->
-    new SimpleStringProperty(cell.getValue().getIdPenggunaan())
-);
-
 TableColumn<LaporanPenggunaanDTO, String> barangCol =
         new TableColumn<>("Nama Barang");
         barangCol.setMinWidth(160);
@@ -449,7 +441,6 @@ deskripsiCol.setCellValueFactory(
 
 table.getColumns().addAll(
     noCol,
-    idCol,
     barangCol,
     kategoriCol,
     penggunaCol,

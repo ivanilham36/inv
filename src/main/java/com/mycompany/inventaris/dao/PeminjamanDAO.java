@@ -62,7 +62,7 @@ public class PeminjamanDAO {
 
     String sql = """
         SELECT 
-            p.id_pinjaman,
+            p.id_peminjaman,     
             u.name AS nama_peminjam,
             u.role,
             b.nama_barang,
@@ -82,7 +82,7 @@ public class PeminjamanDAO {
 
         while (rs.next()) {
             list.add(new LaporanPeminjamanDTO(
-                rs.getString("id_pinjaman"),
+                rs.getString("id_peminjaman"),
                 rs.getString("nama_peminjam"),
                 rs.getString("role"),
                 rs.getString("nama_barang"),
@@ -106,7 +106,7 @@ public class PeminjamanDAO {
 
     String sql = """
         SELECT
-            p.id_pinjaman AS id_penggunaan,
+            p.id_peminjaman AS id_penggunaan,
             b.nama_barang,
             b.kategori,
             u.name AS nama_pengguna,

@@ -260,10 +260,6 @@ filterBar.getChildren().addAll(
     )
 ));
 
-        TableColumn<PeminjamanData, String> idCol = new TableColumn<>("ID Peminjaman");
-        idCol.setMinWidth(120);
-        idCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getIdPeminjaman()));
-
         TableColumn<PeminjamanData, String> namaCol = new TableColumn<>("Nama Peminjam");
         namaCol.setMinWidth(150);
         namaCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNamaPeminjam()));
@@ -377,7 +373,7 @@ statusVerifCol.setCellValueFactory(
         statusBarangCol.setMinWidth(120);
         statusBarangCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatusBarang()));
 
-        table.getColumns().addAll(noCol, idCol, namaCol, roleCol, barangCol, jumlahCol, 
+        table.getColumns().addAll(noCol, namaCol, roleCol, barangCol, jumlahCol, 
                                   tglPinjamCol, tglKembaliCol, statusVerifCol, statusBarangCol);
         
         // Bottom action buttons
