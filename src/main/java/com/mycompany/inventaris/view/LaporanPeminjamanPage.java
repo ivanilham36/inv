@@ -2,6 +2,8 @@ package com.mycompany.inventaris.view;
 
 import com.mycompany.inventaris.model.User;
 import com.mycompany.inventaris.dao.AuditTrailDAO;
+import com.mycompany.inventaris.dao.PeminjamanDAO;
+import com.mycompany.inventaris.model.LaporanPeminjamanDTO;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -21,6 +23,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import javafx.print.PrinterJob;
 
 public class LaporanPeminjamanPage extends BorderPane {
     
@@ -30,24 +33,82 @@ public class LaporanPeminjamanPage extends BorderPane {
     private DatePicker startDatePicker;
     private DatePicker endDatePicker;
     private ComboBox<String> statusFilter;
+    private Pagination pagination;
+    private static final int ROWS_PER_PAGE = 14;
+    private List<PeminjamanData> currentViewData = new ArrayList<>();
+    private Label totalLabel;
+    private TextField searchField;
+
+
     
     public LaporanPeminjamanPage(User user) {
         this.user = user;
         allData = new ArrayList<>();
-        
-        // Dummy data laporan peminjaman
-        allData.add(new PeminjamanData("PMJ001", "Ahmad Fauzi", "Mahasiswa", "Laptop Asus", "1", "2025-11-20", "2025-11-25", "Approved", "Dikembalikan"));
-        allData.add(new PeminjamanData("PMJ002", "Siti Nurhaliza", "Dosen", "Proyektor", "1", "2025-11-21", "2025-11-23", "Approved", "Dikembalikan"));
-        allData.add(new PeminjamanData("PMJ003", "Budi Santoso", "Mahasiswa", "Spidol", "5", "2025-11-22", "2025-11-24", "Rejected", "Ditolak"));
-        allData.add(new PeminjamanData("PMJ004", "Rina Kartika", "Mahasiswa", "Kertas HVS", "3", "2025-11-23", "2025-11-26", "Approved", "Dipinjam"));
-        allData.add(new PeminjamanData("PMJ005", "Doni Pratama", "Petugas", "Mouse", "2", "2025-11-24", "-", "Pending", "Menunggu"));
-        allData.add(new PeminjamanData("PMJ006", "Linda Wijaya", "Dosen", "Webcam", "1", "2025-11-25", "2025-11-28", "Approved", "Dipinjam"));
-        allData.add(new PeminjamanData("PMJ007", "Andi Saputra", "Mahasiswa", "Keyboard", "2", "2025-11-26", "-", "Rejected", "Ditolak"));
-        allData.add(new PeminjamanData("PMJ008", "Maya Sari", "Mahasiswa", "Penghapus", "10", "2025-11-27", "2025-11-29", "Approved", "Dikembalikan"));
-        
         initializeUI();
+        loadData();
     }
+    
+    private void updateTotalLabel(List<?> data) {
+    totalLabel.setText("Total Data: " + data.size());
+}
+    
+    private void setupPagination(List<PeminjamanData> data) {
+    currentViewData = data;
 
+    int pageCount = (int) Math.ceil((double) data.size() / ROWS_PER_PAGE);
+    pagination.setPageCount(Math.max(pageCount, 1));
+
+    pagination.setPageFactory(pageIndex -> {
+        int fromIndex = pageIndex * ROWS_PER_PAGE;
+        int toIndex = Math.min(fromIndex + ROWS_PER_PAGE, data.size());
+
+        table.getItems().setAll(data.subList(fromIndex, toIndex));
+        return new VBox(); // required, but unused
+    });
+
+    pagination.setVisible(data.size() > ROWS_PER_PAGE);
+    pagination.setManaged(data.size() > ROWS_PER_PAGE);
+}
+    
+    private void loadData() {
+    PeminjamanDAO dao = new PeminjamanDAO();
+    List<LaporanPeminjamanDTO> list = dao.getLaporanPeminjaman();
+    table.getItems().clear();
+    allData.clear();
+
+    for (LaporanPeminjamanDTO d : list) {
+        PeminjamanData data = new PeminjamanData(
+            d.getIdPeminjaman(),
+            d.getNamaPeminjam(),
+            d.getRole(),
+            d.getBarang(),
+            String.valueOf(d.getJumlah()),
+            d.getTglPinjam().toString(),
+            d.getTglKembali() != null ? d.getTglKembali().toString() : "-",
+            d.getStatusVerifikasi(),
+            d.getStatusBarang()
+        );
+
+       allData.add(data);
+    }
+    setupPagination(allData);
+    updateTotalLabel(allData);
+
+}
+private void refreshData() {
+    // Reset filters visually
+    startDatePicker.setValue(null);
+    endDatePicker.setValue(null);
+    statusFilter.setValue("Semua Status");
+
+    // Reload from database
+    loadData();
+
+    // Reset pagination to first page
+    pagination.setCurrentPageIndex(0);
+}
+
+    
     private void initializeUI() {
         VBox sidebar = createSidebar();
 
@@ -118,7 +179,47 @@ public class LaporanPeminjamanPage extends BorderPane {
         );
         resetFilterBtn.setOnAction(e -> resetFilters());
 
-        filterBar.getChildren().addAll(dateRangeBox, statusBox, applyFilterBtn, resetFilterBtn);
+        Button refreshBtn = new Button("Refresh");
+refreshBtn.setStyle(
+    "-fx-background-color: #0ea5e9;" +   // blue-cyan
+    "-fx-text-fill: white;" +
+    "-fx-padding: 10 20;" +
+    "-fx-background-radius: 8;" +
+    "-fx-font-size: 12px;" +
+    "-fx-font-weight: bold;" +
+    "-fx-cursor: hand;"
+);
+
+refreshBtn.setOnAction(e -> refreshData());
+
+        
+        // Search Field
+searchField = new TextField();
+searchField.setPromptText("Cari ID / Nama / Barang...");
+searchField.setStyle(
+    "-fx-font-size: 12px;" +
+    "-fx-padding: 8 12;" +
+    "-fx-background-radius: 8;"
+);
+searchField.setPrefWidth(220);
+
+// Trigger search while typing
+searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
+
+// Spacer to push search to the right
+Region searchSpacer = new Region();
+HBox.setHgrow(searchSpacer, Priority.ALWAYS);
+
+filterBar.getChildren().addAll(
+    dateRangeBox,
+    statusBox,
+    applyFilterBtn,
+    resetFilterBtn,
+    refreshBtn,
+    searchSpacer,
+    searchField
+);
+
 
         // Table
         table = new TableView<>();
@@ -152,7 +253,12 @@ public class LaporanPeminjamanPage extends BorderPane {
         noCol.setMaxWidth(50);
         noCol.setStyle("-fx-alignment: CENTER;");
         noCol.setCellValueFactory(data -> 
-            new SimpleStringProperty(String.valueOf(table.getItems().indexOf(data.getValue()) + 1)));
+          new SimpleStringProperty(
+    String.valueOf(
+        pagination.getCurrentPageIndex() * ROWS_PER_PAGE
+        + table.getItems().indexOf(data.getValue()) + 1
+    )
+));
 
         TableColumn<PeminjamanData, String> idCol = new TableColumn<>("ID Peminjaman");
         idCol.setMinWidth(120);
@@ -183,52 +289,88 @@ public class LaporanPeminjamanPage extends BorderPane {
         tglKembaliCol.setMinWidth(120);
         tglKembaliCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTglKembali()));
 
-        // Status Verifikasi column
-        TableColumn<PeminjamanData, String> statusVerifCol = new TableColumn<>("Status Verifikasi");
-        statusVerifCol.setMinWidth(130);
-        statusVerifCol.setCellFactory(col -> new TableCell<>() {
-            @Override
-            protected void updateItem(String status, boolean empty) {
-                super.updateItem(status, empty);
-                if (empty || status == null) {
-                    setGraphic(null);
-                } else {
-                    Label statusLabel = new Label(status);
-                    if (status.equals("Approved")) {
-                        statusLabel.setStyle(
-                            "-fx-background-color: #dcfce7; " +
-                            "-fx-text-fill: #166534; " +
-                            "-fx-padding: 5 12; " +
-                            "-fx-background-radius: 12; " +
-                            "-fx-font-size: 11px; " +
-                            "-fx-font-weight: bold;"
-                        );
-                    } else if (status.equals("Rejected")) {
-                        statusLabel.setStyle(
-                            "-fx-background-color: #fee2e2; " +
-                            "-fx-text-fill: #991b1b; " +
-                            "-fx-padding: 5 12; " +
-                            "-fx-background-radius: 12; " +
-                            "-fx-font-size: 11px; " +
-                            "-fx-font-weight: bold;"
-                        );
-                    } else {
-                        statusLabel.setStyle(
-                            "-fx-background-color: #fef3c7; " +
-                            "-fx-text-fill: #92400e; " +
-                            "-fx-padding: 5 12; " +
-                            "-fx-background-radius: 12; " +
-                            "-fx-font-size: 11px; " +
-                            "-fx-font-weight: bold;"
-                        );
-                    }
-                    HBox box = new HBox(statusLabel);
-                    box.setAlignment(Pos.CENTER);
-                    setGraphic(box);
-                }
+        pagination = new Pagination();
+        pagination.setPageFactory(pageIndex -> new VBox());
+
+       // Status Verifikasi column
+TableColumn<PeminjamanData, String> statusVerifCol = new TableColumn<>("Status Verifikasi");
+statusVerifCol.setMinWidth(130);
+statusVerifCol.setCellFactory(col -> new TableCell<>() {
+    @Override
+    protected void updateItem(String status, boolean empty) {
+        super.updateItem(status, empty);
+        if (empty || status == null) {
+            setGraphic(null);
+        } else {
+            Label statusLabel = new Label(status);
+
+            String lower = status.toLowerCase();
+
+            if (lower.equals("dikembalikan")) {
+                // GREEN
+               statusLabel.setStyle(
+            "-fx-background-color: rgba(34,197,94,0.15);" +
+            "-fx-border-color: #22c55e;" +
+            "-fx-text-fill: #166534;" +
+            "-fx-background-radius: 12;" +
+            "-fx-border-radius: 12;" +
+            "-fx-padding: 4 12;" +
+            "-fx-font-size: 11px;" +
+            "-fx-font-weight: bold;"
+        );
+
+            } 
+            else if (lower.equals("ditolak")) {
+                // RED
+              statusLabel.setStyle(
+            "-fx-background-color: rgba(239,68,68,0.15);" +
+          "-fx-border-color: #ef4444;" +
+         "-fx-text-fill: #991b1b;" +
+          "-fx-background-radius: 12;" +
+         "-fx-border-radius: 12;" +
+         "-fx-padding: 4 12;" +
+         "-fx-font-size: 11px;" +
+         "-fx-font-weight: bold;"
+            );
+
+            } 
+            else if (lower.equals("dipinjam") || lower.equals("pending")) {
+                // ORANGE
+               statusLabel.setStyle(
+               "-fx-background-color: rgba(245,158,11,0.15);" +
+               "-fx-border-color: #f59e0b;" +
+               "-fx-text-fill: #92400e;" +
+               "-fx-background-radius: 12;" +
+               "-fx-border-radius: 12;" +
+               "-fx-padding: 4 12;" +
+               "-fx-font-size: 11px;" +
+               "-fx-font-weight: bold;"
+);
+
+            } 
+            else {
+                // DEFAULT (fallback)
+                statusLabel.setStyle(
+                "-fx-background-color: rgba(156,163,175,0.15);" +
+                "-fx-border-color: #9ca3af;" +
+                "-fx-text-fill: #374151;" +
+                "-fx-background-radius: 12;" +
+                "-fx-border-radius: 12;" +
+                "-fx-padding: 4 12;" +
+                "-fx-font-size: 11px;"
+            );
+
             }
-        });
-        statusVerifCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatusVerifikasi()));
+
+            HBox box = new HBox(statusLabel);
+            box.setAlignment(Pos.CENTER);
+            setGraphic(box);
+        }
+    }
+});
+statusVerifCol.setCellValueFactory(
+    data -> new SimpleStringProperty(data.getValue().getStatusVerifikasi())
+);
 
         // Status Barang column
         TableColumn<PeminjamanData, String> statusBarangCol = new TableColumn<>("Status Barang");
@@ -238,19 +380,30 @@ public class LaporanPeminjamanPage extends BorderPane {
         table.getColumns().addAll(noCol, idCol, namaCol, roleCol, barangCol, jumlahCol, 
                                   tglPinjamCol, tglKembaliCol, statusVerifCol, statusBarangCol);
         
-        allData.forEach(data -> table.getItems().add(data));
-
         // Bottom action buttons
         HBox bottomBar = new HBox(15);
         bottomBar.setAlignment(Pos.CENTER_RIGHT);
         bottomBar.setPadding(new Insets(15, 0, 0, 0));
 
-        Label totalLabel = new Label("Total Data: " + allData.size());
+        totalLabel = new Label("Total Data: 0");
         totalLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+         Button printBtn = new Button("Print");
+         printBtn.setStyle(
+         "-fx-background-color: #3b82f6;" +
+        "-fx-text-fill: white;" +
+        "-fx-padding: 10 25;" +
+        "-fx-background-radius: 20;" +
+        "-fx-font-size: 13px;" +
+        "-fx-font-weight: bold;" +
+        "-fx-cursor: hand;"
+        );
+        printBtn.setOnAction(e -> printTable());
+
+        
         Button exportBtn = new Button("Export ke CSV");
         exportBtn.setStyle(
             "-fx-background-color: #22c55e; " +
@@ -263,53 +416,94 @@ public class LaporanPeminjamanPage extends BorderPane {
         );
         exportBtn.setOnAction(e -> exportToCSV());
 
-        bottomBar.getChildren().addAll(totalLabel, spacer, exportBtn);
+        bottomBar.getChildren().addAll(totalLabel, spacer, printBtn, exportBtn);
 
-        mainContent.getChildren().addAll(title, filterBar, table, bottomBar);
+        mainContent.getChildren().addAll(title, filterBar, table, pagination, bottomBar);
 
         this.setLeft(sidebar);
         this.setCenter(mainContent);
     }
 
-    private void applyFilters() {
-        List<PeminjamanData> filteredData = new ArrayList<>(allData);
+private void applyFilters() {
+    List<PeminjamanData> filteredData = new ArrayList<>(allData);
 
-        // Filter by date range
-        LocalDate startDate = startDatePicker.getValue();
-        LocalDate endDate = endDatePicker.getValue();
-        
-        if (startDate != null && endDate != null) {
-            filteredData = filteredData.stream()
-                .filter(data -> {
-                    try {
-                        LocalDate tglPinjam = LocalDate.parse(data.getTglPinjam());
-                        return !tglPinjam.isBefore(startDate) && !tglPinjam.isAfter(endDate);
-                    } catch (Exception e) {
-                        return true;
-                    }
-                })
-                .collect(Collectors.toList());
-        }
+    // 🔎 SEARCH FILTER
+    String keyword = searchField != null ? searchField.getText().toLowerCase().trim() : "";
 
-        // Filter by status
-        String status = statusFilter.getValue();
-        if (!status.equals("Semua Status")) {
-            filteredData = filteredData.stream()
-                .filter(data -> data.getStatusVerifikasi().equals(status))
-                .collect(Collectors.toList());
-        }
-
-        table.getItems().clear();
-        filteredData.forEach(data -> table.getItems().add(data));
+    if (!keyword.isEmpty()) {
+        filteredData = filteredData.stream()
+            .filter(d ->
+                d.getIdPeminjaman().toLowerCase().contains(keyword) ||
+                d.getNamaPeminjam().toLowerCase().contains(keyword) ||
+                d.getBarang().toLowerCase().contains(keyword)
+            )
+            .collect(Collectors.toList());
     }
 
-    private void resetFilters() {
-        startDatePicker.setValue(null);
-        endDatePicker.setValue(null);
-        statusFilter.setValue("Semua Status");
-        table.getItems().clear();
-        allData.forEach(data -> table.getItems().add(data));
+    // 📅 DATE FILTER
+    LocalDate startDate = startDatePicker.getValue();
+    LocalDate endDate = endDatePicker.getValue();
+
+    if (startDate != null && endDate != null) {
+        filteredData = filteredData.stream()
+            .filter(d -> {
+                try {
+                    LocalDate tglPinjam = LocalDate.parse(d.getTglPinjam());
+                    return !tglPinjam.isBefore(startDate)
+                        && !tglPinjam.isAfter(endDate);
+                } catch (Exception e) {
+                    return true;
+                }
+            })
+            .collect(Collectors.toList());
     }
+
+    // 📌 STATUS FILTER
+    String status = statusFilter.getValue();
+    if (!status.equals("Semua Status")) {
+        filteredData = filteredData.stream()
+            .filter(d -> d.getStatusVerifikasi().equalsIgnoreCase(status))
+            .collect(Collectors.toList());
+    }
+
+    setupPagination(filteredData);
+    updateTotalLabel(filteredData);
+}
+
+private void resetFilters() {
+    startDatePicker.setValue(null);
+    endDatePicker.setValue(null);
+    statusFilter.setValue("Semua Status");
+    if (searchField != null) searchField.clear();
+
+    setupPagination(allData);
+    updateTotalLabel(allData);
+}
+
+    private void printTable() {
+    PrinterJob job = PrinterJob.createPrinterJob();
+    if (job == null) return;
+
+    boolean proceed = job.showPrintDialog(this.getScene().getWindow());
+    if (!proceed) return;
+
+    // Create a temporary table for printing
+    TableView<PeminjamanData> printTable = new TableView<>();
+    printTable.getColumns().addAll(table.getColumns());
+
+    // Print ALL filtered data (not just one page)
+    printTable.getItems().setAll(currentViewData);
+
+    printTable.setPrefWidth(table.getWidth());
+    printTable.setScaleX(0.8);
+    printTable.setScaleY(0.8);
+
+    boolean success = job.printPage(printTable);
+    if (success) {
+        job.endJob();
+    }
+}
+
 
     private void exportToCSV() {
         FileChooser fileChooser = new FileChooser();
@@ -318,6 +512,8 @@ public class LaporanPeminjamanPage extends BorderPane {
         fileChooser.getExtensionFilters().add(
             new FileChooser.ExtensionFilter("CSV Files", "*.csv")
         );
+        
+       
         
         File file = fileChooser.showSaveDialog(this.getScene().getWindow());
         

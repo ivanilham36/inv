@@ -11,6 +11,8 @@ package com.mycompany.inventaris.view;
 
 import com.mycompany.inventaris.model.User;
 import com.mycompany.inventaris.dao.AuditTrailDAO;
+import com.mycompany.inventaris.dao.PeminjamanDAO;
+import com.mycompany.inventaris.model.LaporanPenggunaanDTO;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -35,9 +37,6 @@ import java.util.Map;
 import javafx.print.PrinterJob;
 
 public class LaporanPenggunaanPage extends BorderPane {
-    
-    private TableView<PenggunaanData> table;
-    private List<PenggunaanData> allData;
     private User user;
     private DatePicker startDatePicker;
     private DatePicker endDatePicker;
@@ -48,28 +47,54 @@ public class LaporanPenggunaanPage extends BorderPane {
     private Label totalPenggunaanLabel;
     private Label barangTerbanyakLabel;
     private Label avgDurasiLabel;
-    
-    public LaporanPenggunaanPage(User user) {
-        this.user = user;
-        allData = new ArrayList<>();
-        
-        // Dummy data laporan penggunaan
-        allData.add(new PenggunaanData("PGN001", "Laptop Asus", "Elektronik", "Ahmad Fauzi", "Mahasiswa", "2025-11-20", "2025-11-25", "5 hari", "Baik"));
-        allData.add(new PenggunaanData("PGN002", "Proyektor", "Elektronik", "Siti Nurhaliza", "Dosen", "2025-11-21", "2025-11-23", "2 hari", "Baik"));
-        allData.add(new PenggunaanData("PGN003", "Spidol", "ATK", "Budi Santoso", "Mahasiswa", "2025-11-22", "2025-11-24", "2 hari", "Habis"));
-        allData.add(new PenggunaanData("PGN004", "Kertas HVS", "ATK", "Rina Kartika", "Mahasiswa", "2025-11-23", "2025-11-26", "3 hari", "Terpakai"));
-        allData.add(new PenggunaanData("PGN005", "Mouse", "Elektronik", "Doni Pratama", "Petugas", "2025-11-24", "2025-11-27", "3 hari", "Baik"));
-        allData.add(new PenggunaanData("PGN006", "Webcam", "Elektronik", "Linda Wijaya", "Dosen", "2025-11-25", "2025-11-28", "3 hari", "Baik"));
-        allData.add(new PenggunaanData("PGN007", "Keyboard", "Elektronik", "Andi Saputra", "Mahasiswa", "2025-11-26", "2025-11-29", "3 hari", "Baik"));
-        allData.add(new PenggunaanData("PGN008", "Penghapus", "ATK", "Maya Sari", "Mahasiswa", "2025-11-27", "2025-11-29", "2 hari", "Habis"));
-        allData.add(new PenggunaanData("PGN009", "Kabel HDMI", "Elektronik", "Farhan Ali", "Dosen", "2025-11-28", "2025-12-01", "3 hari", "Baik"));
-        allData.add(new PenggunaanData("PGN010", "Whiteboard Marker", "ATK", "Dewi Lestari", "Petugas", "2025-11-29", "2025-12-02", "3 hari", "Terpakai"));
-        allData.add(new PenggunaanData("PGN011", "Laptop HP", "Elektronik", "Rian Kurnia", "Mahasiswa", "2025-11-30", "2025-12-03", "3 hari", "Baik"));
-        allData.add(new PenggunaanData("PGN012", "Penggaris", "ATK", "Siska Amelia", "Mahasiswa", "2025-12-01", "2025-12-03", "2 hari", "Baik"));
-        
-        initializeUI();
-    }
+    private TableView<LaporanPenggunaanDTO> table;
+    private List<LaporanPenggunaanDTO> allData;
+    private static final int ROWS_PER_PAGE = 14;
+    private Pagination pagination;
+    private List<LaporanPenggunaanDTO> currentData;
 
+
+    
+public LaporanPenggunaanPage(User user) {
+    this.user = user;
+
+    PeminjamanDAO dao = new PeminjamanDAO();
+    allData = dao.getLaporanPenggunaan();
+
+    System.out.println("LaporanPenggunaan rows = " + allData.size()); 
+
+    initializeUI();
+}
+
+
+private VBox createPage(int pageIndex) {
+    int fromIndex = pageIndex * ROWS_PER_PAGE;
+    int toIndex = Math.min(
+        fromIndex + ROWS_PER_PAGE,
+        currentData.size()
+    );
+
+    table.getItems().setAll(
+        currentData.subList(fromIndex, toIndex)
+    );
+
+    return new VBox(); 
+}
+
+
+  private Pagination createPagination() {
+    int pageCount = (int) Math.ceil(
+        (double) currentData.size() / ROWS_PER_PAGE
+    );
+
+    Pagination p = new Pagination(pageCount, 0);
+    p.setVisible(currentData.size() > ROWS_PER_PAGE);
+
+    p.setPageFactory(this::createPage);
+    return p;
+}
+
+  
     private void initializeUI() {
         VBox sidebar = createSidebar();
 
@@ -173,7 +198,7 @@ public class LaporanPenggunaanPage extends BorderPane {
         kategoriLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
         
         kategoriFilter = new ComboBox<>();
-        kategoriFilter.getItems().addAll("Semua Kategori", "Elektronik", "ATK");
+        kategoriFilter.getItems().addAll("Semua Kategori", "Consumable", "Non Consumable");
         kategoriFilter.setValue("Semua Kategori");
         kategoriFilter.setStyle("-fx-font-size: 12px;");
         
@@ -211,6 +236,7 @@ public class LaporanPenggunaanPage extends BorderPane {
         table.setStyle("-fx-background-color: white; -fx-background-radius: 10;");
         table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
+
         // Apply header styling
         this.sceneProperty().addListener((observable, oldScene, newScene) -> {
             if (newScene != null) {
@@ -233,96 +259,220 @@ public class LaporanPenggunaanPage extends BorderPane {
             }
         });
 
-        TableColumn<PenggunaanData, String> noCol = new TableColumn<>("No.");
-        noCol.setMinWidth(50);
-        noCol.setMaxWidth(50);
-        noCol.setStyle("-fx-alignment: CENTER;");
-        noCol.setCellValueFactory(data -> 
-            new SimpleStringProperty(String.valueOf(table.getItems().indexOf(data.getValue()) + 1)));
+TableColumn<LaporanPenggunaanDTO, String> noCol = new TableColumn<>("No");
+noCol.setMinWidth(50);
+noCol.setCellValueFactory(cell ->
+    new SimpleStringProperty(
+        String.valueOf(table.getItems().indexOf(cell.getValue()) + 1)
+    )
+);
 
-        TableColumn<PenggunaanData, String> idCol = new TableColumn<>("ID Penggunaan");
+
+TableColumn<LaporanPenggunaanDTO, String> idCol =
+        new TableColumn<>("ID Penggunaan");
         idCol.setMinWidth(120);
-        idCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getIdPenggunaan()));
+idCol.setCellValueFactory(cell ->
+    new SimpleStringProperty(cell.getValue().getIdPenggunaan())
+);
 
-        TableColumn<PenggunaanData, String> barangCol = new TableColumn<>("Nama Barang");
-        barangCol.setMinWidth(150);
-        barangCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNamaBarang()));
+TableColumn<LaporanPenggunaanDTO, String> barangCol =
+        new TableColumn<>("Nama Barang");
+        barangCol.setMinWidth(160);
+barangCol.setCellValueFactory(cell ->
+    new SimpleStringProperty(cell.getValue().getNamaBarang())
+);
 
-        TableColumn<PenggunaanData, String> kategoriCol = new TableColumn<>("Kategori");
-        kategoriCol.setMinWidth(100);
-        kategoriCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getKategori()));
+TableColumn<LaporanPenggunaanDTO, String> kategoriCol =
+        new TableColumn<>("Kategori");
+        kategoriCol.setMinWidth(120);
+kategoriCol.setCellValueFactory(cell ->
+    new SimpleStringProperty(cell.getValue().getKategori())
+);
 
-        TableColumn<PenggunaanData, String> penggunaCol = new TableColumn<>("Pengguna");
-        penggunaCol.setMinWidth(150);
-        penggunaCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNamaPengguna()));
+TableColumn<LaporanPenggunaanDTO, String> penggunaCol =
+        new TableColumn<>("Pengguna");
+        penggunaCol.setMinWidth(160);
+penggunaCol.setCellValueFactory(cell ->
+    new SimpleStringProperty(cell.getValue().getNamaPengguna())
+);
 
-        TableColumn<PenggunaanData, String> roleCol = new TableColumn<>("Role");
+TableColumn<LaporanPenggunaanDTO, String> roleCol =
+        new TableColumn<>("Role");
         roleCol.setMinWidth(100);
-        roleCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getRole()));
+roleCol.setCellValueFactory(cell ->
+    new SimpleStringProperty(cell.getValue().getRole())
+);
 
-        TableColumn<PenggunaanData, String> tglMulaiCol = new TableColumn<>("Tgl Mulai");
-        tglMulaiCol.setMinWidth(110);
-        tglMulaiCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTglMulai()));
+TableColumn<LaporanPenggunaanDTO, String> tglMulaiCol =
+        new TableColumn<>("Tgl Mulai");
+        tglMulaiCol.setMinWidth(120);
+tglMulaiCol.setCellValueFactory(cell ->
+    new SimpleStringProperty(
+        cell.getValue().getTanggalPeminjaman().toString()
+    )
+);
 
-        TableColumn<PenggunaanData, String> tglSelesaiCol = new TableColumn<>("Tgl Selesai");
-        tglSelesaiCol.setMinWidth(110);
-        tglSelesaiCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTglSelesai()));
+TableColumn<LaporanPenggunaanDTO, String> tglSelesaiCol =
+        new TableColumn<>("Tgl Selesai");
+        tglSelesaiCol.setMinWidth(120);
+tglSelesaiCol.setCellValueFactory(cell -> {
+    if (cell.getValue().getTanggalKembali() == null) {
+        return new SimpleStringProperty("-");
+    }
+    return new SimpleStringProperty(
+        cell.getValue().getTanggalKembali().toString()
+    );
+});
 
-        TableColumn<PenggunaanData, String> durasiCol = new TableColumn<>("Durasi");
-        durasiCol.setMinWidth(90);
-        durasiCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getDurasi()));
+TableColumn<LaporanPenggunaanDTO, String> durasiCol =
+        new TableColumn<>("Durasi");
+        durasiCol.setMinWidth(100);
+durasiCol.setCellValueFactory(cell ->
+    new SimpleStringProperty(
+        cell.getValue().getDurasiHari() + " hari"
+    )
+);
 
-        // Kondisi Barang column
-        TableColumn<PenggunaanData, String> kondisiCol = new TableColumn<>("Kondisi");
-        kondisiCol.setMinWidth(120);
-        kondisiCol.setCellFactory(col -> new TableCell<>() {
-            @Override
-            protected void updateItem(String kondisi, boolean empty) {
-                super.updateItem(kondisi, empty);
-                if (empty || kondisi == null) {
-                    setGraphic(null);
-                } else {
-                    Label kondisiLabel = new Label(kondisi);
-                    if (kondisi.equals("Baik")) {
-                        kondisiLabel.setStyle(
-                            "-fx-background-color: #dcfce7; " +
-                            "-fx-text-fill: #166534; " +
-                            "-fx-padding: 5 12; " +
-                            "-fx-background-radius: 12; " +
-                            "-fx-font-size: 11px; " +
-                            "-fx-font-weight: bold;"
-                        );
-                    } else if (kondisi.equals("Habis")) {
-                        kondisiLabel.setStyle(
-                            "-fx-background-color: #fee2e2; " +
-                            "-fx-text-fill: #991b1b; " +
-                            "-fx-padding: 5 12; " +
-                            "-fx-background-radius: 12; " +
-                            "-fx-font-size: 11px; " +
-                            "-fx-font-weight: bold;"
-                        );
-                    } else {
-                        kondisiLabel.setStyle(
-                            "-fx-background-color: #fef3c7; " +
-                            "-fx-text-fill: #92400e; " +
-                            "-fx-padding: 5 12; " +
-                            "-fx-background-radius: 12; " +
-                            "-fx-font-size: 11px; " +
-                            "-fx-font-weight: bold;"
-                        );
-                    }
-                    HBox box = new HBox(kondisiLabel);
-                    box.setAlignment(Pos.CENTER);
-                    setGraphic(box);
-                }
-            }
-        });
-        kondisiCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getKondisi()));
 
-        table.getColumns().addAll(noCol, idCol, barangCol, kategoriCol, penggunaCol, roleCol, 
-                                  tglMulaiCol, tglSelesaiCol, durasiCol, kondisiCol);
-        
-        allData.forEach(data -> table.getItems().add(data));
+TableColumn<LaporanPenggunaanDTO, String> kondisiCol =
+        new TableColumn<>("Kondisi");
+kondisiCol.setMinWidth(120);
+
+kondisiCol.setCellFactory(col -> new TableCell<>() {
+    @Override
+    protected void updateItem(String kondisi, boolean empty) {
+        super.updateItem(kondisi, empty);
+
+        if (empty || kondisi == null) {
+            setGraphic(null);
+            setText(null);
+            return;
+        }
+
+        Label label = new Label(kondisi);
+        String lower = kondisi.trim().toLowerCase();
+
+        if (lower.equals("baik")) {
+            // GREEN
+            label.setStyle(
+                "-fx-background-color: rgba(34,197,94,0.15);" +
+                "-fx-border-color: #22c55e;" +
+                "-fx-text-fill: #166534;" +
+                "-fx-background-radius: 12;" +
+                "-fx-border-radius: 12;" +
+                "-fx-padding: 4 12;" +
+                "-fx-font-size: 11px;" +
+                "-fx-font-weight: bold;"
+            );
+
+        } else if (lower.equals("digunakan")) {
+            // ORANGE
+            label.setStyle(
+                "-fx-background-color: rgba(245,158,11,0.15);" +
+                "-fx-border-color: #f59e0b;" +
+                "-fx-text-fill: #92400e;" +
+                "-fx-background-radius: 12;" +
+                "-fx-border-radius: 12;" +
+                "-fx-padding: 4 12;" +
+                "-fx-font-size: 11px;" +
+                "-fx-font-weight: bold;"
+            );
+
+        } else if (lower.equals("rusak")) {
+            // RED
+            label.setStyle(
+                "-fx-background-color: rgba(239,68,68,0.15);" +
+                "-fx-border-color: #ef4444;" +
+                "-fx-text-fill: #991b1b;" +
+                "-fx-background-radius: 12;" +
+                "-fx-border-radius: 12;" +
+                "-fx-padding: 4 12;" +
+                "-fx-font-size: 11px;" +
+                "-fx-font-weight: bold;"
+            );
+
+        } else {
+            // FALLBACK
+            label.setStyle(
+                "-fx-background-color: rgba(156,163,175,0.15);" +
+                "-fx-border-color: #9ca3af;" +
+                "-fx-text-fill: #374151;" +
+                "-fx-background-radius: 12;" +
+                "-fx-border-radius: 12;" +
+                "-fx-padding: 4 12;" +
+                "-fx-font-size: 11px;"
+            );
+        }
+
+        HBox box = new HBox(label);
+        box.setAlignment(Pos.CENTER);
+        setGraphic(box);
+        setText(null);
+    }
+});
+
+kondisiCol.setCellValueFactory(
+    data -> new SimpleStringProperty(data.getValue().getKondisi())
+);
+
+
+TableColumn<LaporanPenggunaanDTO, String> deskripsiCol =
+        new TableColumn<>("Deskripsi");
+deskripsiCol.setMinWidth(250);
+
+/* Wrap text so long descriptions don't break layout */
+deskripsiCol.setCellFactory(col -> new TableCell<>() {
+    private final Label label = new Label();
+
+    {
+        label.setWrapText(true);
+        label.setStyle("-fx-font-size: 11px; -fx-text-fill: #374151;");
+        setGraphic(label);
+        setPrefHeight(Control.USE_COMPUTED_SIZE);
+    }
+
+    @Override
+    protected void updateItem(String text, boolean empty) {
+        super.updateItem(text, empty);
+        if (empty || text == null || text.isBlank()) {
+            label.setText("-");
+        } else {
+            label.setText(text);
+        }
+    }
+});
+
+deskripsiCol.setCellValueFactory(
+    data -> new SimpleStringProperty(data.getValue().getDeskripsi())
+);
+
+
+table.getColumns().addAll(
+    noCol,
+    idCol,
+    barangCol,
+    kategoriCol,
+    penggunaCol,
+    roleCol,
+    tglMulaiCol,
+    tglSelesaiCol,
+    durasiCol,
+    kondisiCol,
+    deskripsiCol
+);
+
+table.setPrefHeight(Region.USE_COMPUTED_SIZE);
+table.setMaxHeight(Double.MAX_VALUE);
+
+
+table.setPrefHeight(500); // or whatever fits your UI
+table.setMinHeight(500);
+table.setMaxHeight(Region.USE_COMPUTED_SIZE);
+      
+
+currentData = new ArrayList<>(allData);
+pagination = createPagination();
+createPage(0);
 
         // Bottom action buttons
         HBox bottomBar = new HBox(15);
@@ -335,6 +485,20 @@ public class LaporanPenggunaanPage extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        Button refreshBtn = new Button("🔄 Refresh Data");
+refreshBtn.setStyle(
+    "-fx-background-color: #0ea5e9; " +
+    "-fx-text-fill: white; " +
+    "-fx-padding: 10 25; " +
+    "-fx-background-radius: 20; " +
+    "-fx-font-size: 13px; " +
+    "-fx-font-weight: bold; " +
+    "-fx-cursor: hand;"
+);
+
+refreshBtn.setOnAction(e -> refreshDataFromDatabase());
+
+        
         Button printBtn = new Button("🖨 Cetak Laporan");
         printBtn.setStyle(
             "-fx-background-color: #3b82f6; " +
@@ -359,9 +523,18 @@ public class LaporanPenggunaanPage extends BorderPane {
         );
         exportBtn.setOnAction(e -> exportToCSV());
 
-        bottomBar.getChildren().addAll(totalLabel, spacer, printBtn, exportBtn);
+        bottomBar.getChildren().addAll(totalLabel, spacer, refreshBtn, printBtn, exportBtn);
 
-        mainContent.getChildren().addAll(title, statsBox, chartsBox, filterSection, table, bottomBar);
+    VBox tableSection = new VBox(10, table, pagination);
+
+    mainContent.getChildren().addAll(
+    title,
+    statsBox,
+    chartsBox,
+    filterSection,
+    tableSection,
+    bottomBar
+    );
         scrollPane.setContent(mainContent);
 
         this.setLeft(sidebar);
@@ -382,8 +555,12 @@ public class LaporanPenggunaanPage extends BorderPane {
                 getAverageDuration(), "#f59e0b", "durasi");
 
         VBox card4 = createStatCard("✓", "Kondisi Baik",
-                allData.stream().filter(d -> d.getKondisi().equals("Baik")).count() + " barang",
-                "#22c55e", null);
+        allData.stream()
+        .filter(d -> d.getKondisi() != null)
+        .filter(d -> d.getKondisi().trim().equalsIgnoreCase("baik"))
+        .count() + " barang",
+        "#22c55e", null);
+
 
         
         statsBox.getChildren().addAll(card1, card2, card3, card4);
@@ -438,7 +615,7 @@ public class LaporanPenggunaanPage extends BorderPane {
 
     private String getBarangTerbanyak() {
         Map<String, Long> barangCount = allData.stream()
-            .collect(Collectors.groupingBy(PenggunaanData::getNamaBarang, Collectors.counting()));
+            .collect(Collectors.groupingBy(LaporanPenggunaanDTO::getNamaBarang, Collectors.counting()));
         
         return barangCount.entrySet().stream()
             .max(Map.Entry.comparingByValue())
@@ -447,34 +624,34 @@ public class LaporanPenggunaanPage extends BorderPane {
     }
 
     private String getAverageDuration() {
-        double avg = allData.stream()
-            .mapToInt(d -> {
-                try {
-                    return Integer.parseInt(d.getDurasi().split(" ")[0]);
-                } catch (Exception e) {
-                    return 0;
-                }
-            })
-            .average()
-            .orElse(0);
-        
-        return String.format("%.1f hari", avg);
-    }
+    double avg = allData.stream()
+        .mapToInt(LaporanPenggunaanDTO::getDurasiHari)
+        .average()
+        .orElse(0);
 
-    private void updateKondisiChart(List<PenggunaanData> data) {
-        Map<String, Long> kondisiCount = data.stream()
-            .collect(Collectors.groupingBy(PenggunaanData::getKondisi, Collectors.counting()));
-        
-        kondisiChart.getData().clear();
-        kondisiCount.forEach((kondisi, count) -> {
-            PieChart.Data slice = new PieChart.Data(kondisi + " (" + count + ")", count);
-            kondisiChart.getData().add(slice);
-        });
-    }
+    return String.format("%.1f hari", avg);
+}
 
-    private void updateKategoriChart(List<PenggunaanData> data) {
+private void updateKondisiChart(List<LaporanPenggunaanDTO> data) {
+    Map<String, Long> kondisiCount = data.stream()
+        .filter(d -> d.getKondisi() != null)
+        .collect(Collectors.groupingBy(
+            d -> d.getKondisi().trim().toUpperCase(),
+            Collectors.counting()
+        ));
+
+    kondisiChart.getData().clear();
+    kondisiCount.forEach((kondisi, count) -> {
+        kondisiChart.getData().add(
+            new PieChart.Data(kondisi + " (" + count + ")", count)
+        );
+    });
+}
+
+
+    private void updateKategoriChart(List<LaporanPenggunaanDTO> data) {
         Map<String, Long> kategoriCount = data.stream()
-            .collect(Collectors.groupingBy(PenggunaanData::getKategori, Collectors.counting()));
+            .collect(Collectors.groupingBy(LaporanPenggunaanDTO::getKategori, Collectors.counting()));
         
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         kategoriCount.forEach((kategori, count) -> {
@@ -485,12 +662,12 @@ public class LaporanPenggunaanPage extends BorderPane {
         kategoriChart.getData().add(series);
     }
 
-    private void updateStatsCards(List<PenggunaanData> data) {
+    private void updateStatsCards(List<LaporanPenggunaanDTO> data) {
         totalPenggunaanLabel.setText(String.valueOf(data.size()));
         
         // Update barang terbanyak
         Map<String, Long> barangCount = data.stream()
-            .collect(Collectors.groupingBy(PenggunaanData::getNamaBarang, Collectors.counting()));
+            .collect(Collectors.groupingBy(LaporanPenggunaanDTO::getNamaBarang, Collectors.counting()));
         String barangTerbanyak = barangCount.entrySet().stream()
             .max(Map.Entry.comparingByValue())
             .map(e -> e.getKey() + " (" + e.getValue() + "x)")
@@ -498,21 +675,17 @@ public class LaporanPenggunaanPage extends BorderPane {
         barangTerbanyakLabel.setText(barangTerbanyak);
         
         // Update rata-rata durasi
-        double avg = data.stream()
-            .mapToInt(d -> {
-                try {
-                    return Integer.parseInt(d.getDurasi().split(" ")[0]);
-                } catch (Exception e) {
-                    return 0;
-                }
-            })
-            .average()
-            .orElse(0);
-        avgDurasiLabel.setText(String.format("%.1f hari", avg));
+       double avg = data.stream()
+    .mapToInt(LaporanPenggunaanDTO::getDurasiHari)
+    .average()
+    .orElse(0);
+
+    avgDurasiLabel.setText(String.format("%.1f hari", avg));
+
     }
 
     private void applyFilters() {
-        List<PenggunaanData> filteredData = new ArrayList<>(allData);
+        List<LaporanPenggunaanDTO> filteredData = new ArrayList<>(allData);
 
         // Filter by search
         String searchText = searchField.getText().toLowerCase();
@@ -534,7 +707,7 @@ public class LaporanPenggunaanPage extends BorderPane {
             filteredData = filteredData.stream()
                 .filter(data -> {
                     try {
-                        LocalDate tglMulai = LocalDate.parse(data.getTglMulai());
+                    LocalDate tglMulai = data.getTanggalPeminjaman().toLocalDate();
                         return !tglMulai.isBefore(startDate) && !tglMulai.isAfter(endDate);
                     } catch (Exception e) {
                         return true;
@@ -543,16 +716,34 @@ public class LaporanPenggunaanPage extends BorderPane {
                 .collect(Collectors.toList());
         }
 
-        // Filter by kategori
-        String kategori = kategoriFilter.getValue();
-        if (!kategori.equals("Semua Kategori")) {
-            filteredData = filteredData.stream()
-                .filter(data -> data.getKategori().equals(kategori))
-                .collect(Collectors.toList());
-        }
+     String kategoriUI = kategoriFilter.getValue();
+if (!"Semua Kategori".equals(kategoriUI)) {
 
-        table.getItems().clear();
-        filteredData.forEach(data -> table.getItems().add(data));
+    String kategoriDB;
+    if ("Consumable".equalsIgnoreCase(kategoriUI)) {
+        kategoriDB = "consumable";
+    } else if ("Non Consumable".equalsIgnoreCase(kategoriUI)) {
+        kategoriDB = "non_consumable";
+    } else {
+        kategoriDB = kategoriUI.toLowerCase();
+    }
+
+    filteredData = filteredData.stream()
+        .filter(d -> d.getKategori() != null)
+        .filter(d -> d.getKategori().equalsIgnoreCase(kategoriDB))
+        .collect(Collectors.toList());
+}
+
+
+currentData = filteredData;
+
+pagination.setPageCount(
+    (int) Math.ceil((double) currentData.size() / ROWS_PER_PAGE)
+);
+pagination.setCurrentPageIndex(0);
+pagination.setVisible(currentData.size() > ROWS_PER_PAGE);
+
+createPage(0);
         
         // Update charts and stats
         updateKondisiChart(filteredData);
@@ -560,13 +751,51 @@ public class LaporanPenggunaanPage extends BorderPane {
         updateStatsCards(filteredData);
     }
 
+    private void refreshDataFromDatabase() {
+    PeminjamanDAO dao = new PeminjamanDAO();
+
+    // Re-fetch from DB
+    allData = dao.getLaporanPenggunaan();
+    currentData = new ArrayList<>(allData);
+
+    // Reset filters UI
+    searchField.clear();
+    startDatePicker.setValue(null);
+    endDatePicker.setValue(null);
+    kategoriFilter.setValue("Semua Kategori");
+
+    // Update pagination
+    pagination.setPageCount(
+        (int) Math.ceil((double) currentData.size() / ROWS_PER_PAGE)
+    );
+    pagination.setCurrentPageIndex(0);
+    pagination.setVisible(currentData.size() > ROWS_PER_PAGE);
+
+    createPage(0);
+
+    // Update charts & stats
+    updateKondisiChart(allData);
+    updateKategoriChart(allData);
+    updateStatsCards(allData);
+
+    System.out.println("🔄 Laporan Penggunaan refreshed. Rows = " + allData.size());
+}
+    
     private void resetFilters() {
         searchField.clear();
         startDatePicker.setValue(null);
         endDatePicker.setValue(null);
         kategoriFilter.setValue("Semua Kategori");
-        table.getItems().clear();
-        allData.forEach(data -> table.getItems().add(data));
+        currentData = new ArrayList<>(allData);
+
+        pagination.setPageCount(
+        (int) Math.ceil((double) currentData.size() / ROWS_PER_PAGE)
+        );
+        pagination.setCurrentPageIndex(0);
+        pagination.setVisible(currentData.size() > ROWS_PER_PAGE);
+
+        createPage(0);
+
         
         // Reset charts and stats
         updateKondisiChart(allData);
@@ -642,23 +871,24 @@ public class LaporanPenggunaanPage extends BorderPane {
         if (file != null) {
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
                 // Write header
-                writer.write("No,ID Penggunaan,Nama Barang,Kategori,Pengguna,Role,Tgl Mulai,Tgl Selesai,Durasi,Kondisi");
+                writer.write("No,ID Penggunaan,Nama Barang,Kategori,Pengguna,Role,Tgl Mulai,Tgl Selesai,Durasi,Kondisi,Deskripsi");
                 writer.newLine();
                 
                 // Write data from current table view (filtered data)
                 int no = 1;
-                for (PenggunaanData data : table.getItems()) {
-                    writer.write(String.format("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s",
+                for (LaporanPenggunaanDTO data : table.getItems()) {
+                    writer.write(String.format("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
                         no++,
                         data.getIdPenggunaan(),
                         data.getNamaBarang(),
                         data.getKategori(),
                         data.getNamaPengguna(),
                         data.getRole(),
-                        data.getTglMulai(),
-                        data.getTglSelesai(),
-                        data.getDurasi(),
-                        data.getKondisi()
+                        data.getTanggalPeminjaman(),
+                        data.getTanggalKembali(),
+                        data.getDurasiHari() + " hari",
+                        data.getKondisi(),
+                        data.getDeskripsi()
                     ));
                     writer.newLine();
                 }
@@ -898,35 +1128,5 @@ public class LaporanPenggunaanPage extends BorderPane {
         }
 
         return btn;
-    }
-
-    // Inner class
-    public static class PenggunaanData {
-        private String idPenggunaan, namaBarang, kategori, namaPengguna, role;
-        private String tglMulai, tglSelesai, durasi, kondisi;
-        
-        public PenggunaanData(String idPenggunaan, String namaBarang, String kategori, 
-                             String namaPengguna, String role, String tglMulai, String tglSelesai,
-                             String durasi, String kondisi) {
-            this.idPenggunaan = idPenggunaan;
-            this.namaBarang = namaBarang;
-            this.kategori = kategori;
-            this.namaPengguna = namaPengguna;
-            this.role = role;
-            this.tglMulai = tglMulai;
-            this.tglSelesai = tglSelesai;
-            this.durasi = durasi;
-            this.kondisi = kondisi;
-        }
-        
-        public String getIdPenggunaan() { return idPenggunaan; }
-        public String getNamaBarang() { return namaBarang; }
-        public String getKategori() { return kategori; }
-        public String getNamaPengguna() { return namaPengguna; }
-        public String getRole() { return role; }
-        public String getTglMulai() { return tglMulai; }
-        public String getTglSelesai() { return tglSelesai; }
-        public String getDurasi() { return durasi; }
-        public String getKondisi() { return kondisi; }
     }
 }

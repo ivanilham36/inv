@@ -37,6 +37,10 @@ public class AdminUserPage extends BorderPane {
     private TableView<User> table;
     private List<User> allData;
     private User superadmin;
+    private static final int ROWS_PER_PAGE = 8;
+    private int currentPage = 0;
+    private Pagination pagination;
+
     private byte[] fileToBytes(File file) {
     try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
         return fis.readAllBytes();
@@ -177,6 +181,35 @@ public class AdminUserPage extends BorderPane {
         initializeUI();
     }
 
+    private Pagination createPagination() {
+
+    int pageCount = (int) Math.ceil((double) allData.size() / ROWS_PER_PAGE);
+
+    Pagination pagination = new Pagination(pageCount, 0);
+    pagination.setStyle("-fx-page-information-visible: false;");
+
+    pagination.setPageFactory(pageIndex -> {
+        currentPage = pageIndex;
+        updateTablePage();
+        return new VBox(); // dummy node
+    });
+
+    return pagination;
+}
+
+private void updateTablePage() {
+    table.getItems().clear();
+
+    int fromIndex = currentPage * ROWS_PER_PAGE;
+    int toIndex = Math.min(fromIndex + ROWS_PER_PAGE, allData.size());
+
+    if (fromIndex <= toIndex) {
+        table.getItems().addAll(allData.subList(fromIndex, toIndex));
+    }
+}
+
+
+    
     private void initializeUI() {
         VBox sidebar = createSidebar();
 
@@ -232,32 +265,9 @@ public class AdminUserPage extends BorderPane {
         // Table
         table = new TableView<>();
         table.setStyle("-fx-background-color: white; -fx-background-radius: 10;");
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         table.setTableMenuButtonVisible(false);
 
-        // Checkbox column
-        TableColumn<User, Void> checkCol = new TableColumn<>();
-        checkCol.setMinWidth(50);
-        checkCol.setMaxWidth(50);
-
-        checkCol.setCellFactory(col -> new TableCell<>() {
-            private final CheckBox checkBox = new CheckBox();
-
-            {
-                checkBox.setOnAction(e -> {
-                    User user = getTableRow().getItem();
-                    if (user != null) {
-                        System.out.println("Checked user: " + user.getNama());
-                    }
-                });
-            }
-
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : checkBox);
-            }
-        });
   TableColumn<User, byte[]> photoCol = new TableColumn<>("Photo");
         photoCol.setMinWidth(60);
         photoCol.setMaxWidth(60);
@@ -356,6 +366,10 @@ public class AdminUserPage extends BorderPane {
         TableColumn<User, String> idCol = new TableColumn<>("ID");
         idCol.setMinWidth(120);
         idCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getIdentity()));
+        
+        TableColumn<User, String> usernameCol = new TableColumn<>("Username");
+        usernameCol.setMinWidth(150);
+        usernameCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getUsername()));
 
         TableColumn<User, String> dateCol = new TableColumn<>("Date");
         dateCol.setMinWidth(150);
@@ -415,32 +429,47 @@ phoneCol.setCellValueFactory(
         });
         statusCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatus()));
 
-        // Action column
-        TableColumn<User, Void> actionCol = new TableColumn<>("Action");
-        actionCol.setMinWidth(80);
-        actionCol.setCellFactory(col -> new TableCell<>() {
-            private Button actionBtn = new Button("⋮");
-            {
-                actionBtn.setStyle(
-                    "-fx-background-color: transparent; " +
-                    "-fx-text-fill: #64748b; " +
-                    "-fx-font-size: 18px; " +
-                    "-fx-cursor: hand;"
-                );
-                actionBtn.setOnAction(e -> {
-                    User user = getTableView().getItems().get(getIndex());
-                    showActionMenu(actionBtn, user);
-                });
-            }
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : actionBtn);
-            }
-        });
+        TableColumn<User, Void> actionCol = new TableColumn<>("Aksi");
+        actionCol.setMinWidth(90);
+        actionCol.setPrefWidth(90);
+        actionCol.setMaxWidth(90);
+        actionCol.setResizable(false);
 
-        table.getColumns().addAll(checkCol, photoCol, nameCol, idCol, dateCol, positionCol, phoneCol, statusCol, actionCol);
-        allData.forEach(data -> table.getItems().add(data));
+actionCol.setCellFactory(col -> new TableCell<>() {
+
+    private final Button actionBtn = new Button("⋮");
+
+    {
+        actionBtn.setStyle(
+            "-fx-background-color: transparent; " +
+            "-fx-text-fill: #64748b; " +
+            "-fx-font-size: 20px; " +
+            "-fx-padding: 4 10; " +   
+            "-fx-cursor: hand;"
+        );
+
+        actionBtn.setOnAction(e -> {
+            User user = getTableView().getItems().get(getIndex());
+            showActionMenu(actionBtn, user);
+        });
+    }
+
+    @Override
+    protected void updateItem(Void item, boolean empty) {
+        super.updateItem(item, empty);
+        if (empty) {
+            setGraphic(null);
+        } else {
+            setGraphic(actionBtn);
+            setAlignment(Pos.CENTER);    
+        }
+    }
+});
+
+
+        table.getColumns().addAll(photoCol, nameCol, usernameCol, idCol, dateCol, positionCol, phoneCol, statusCol, actionCol);
+        pagination = createPagination();
+        updateTablePage();
 
         // Apply header styling
         this.sceneProperty().addListener((observable, oldScene, newScene) -> {
@@ -500,46 +529,13 @@ phoneCol.setCellValueFactory(
             sortedList.forEach(data -> table.getItems().add(data));
         });
 
-        // Pagination
-        HBox pagination = new HBox(10);
-        pagination.setAlignment(Pos.CENTER_RIGHT);
-        pagination.setPadding(new Insets(10, 0, 0, 0));
-        
-        Label pageInfo = new Label("Showing 1-5 from 100 data");
-        pageInfo.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b;");
-        
-        Region paginationSpacer = new Region();
-        HBox.setHgrow(paginationSpacer, Priority.ALWAYS);
-        
-        Button prevBtn = createPaginationButton("◀");
-        Button page1Btn = createPaginationButton("1");
-        page1Btn.setStyle(page1Btn.getStyle() + "-fx-background-color: #3C4C79; -fx-text-fill: white;");
-        Button page2Btn = createPaginationButton("2");
-        Button page3Btn = createPaginationButton("3");
-        Button nextBtn = createPaginationButton("▶");
-        
-        pagination.getChildren().addAll(pageInfo, paginationSpacer, prevBtn, page1Btn, page2Btn, page3Btn, nextBtn);
-
         mainContent.getChildren().addAll(title, topBar, table, pagination);
 
         this.setLeft(sidebar);
         this.setCenter(mainContent);
     }
 
-    private Button createPaginationButton(String text) {
-        Button btn = new Button(text);
-        btn.setStyle(
-            "-fx-background-color: white; " +
-            "-fx-border-color: #e5e7eb; " +
-            "-fx-border-radius: 6; " +
-            "-fx-background-radius: 6; " +
-            "-fx-padding: 8 12; " +
-            "-fx-font-size: 12px; " +
-            "-fx-cursor: hand;"
-        );
-        btn.setMinWidth(40);
-        return btn;
-    }
+
 
     private void showActionMenu(Button sourceBtn, User user) {
         ContextMenu contextMenu = new ContextMenu();
@@ -642,7 +638,7 @@ phoneCol.setCellValueFactory(
 
 
     ComboBox<String> roleBox = new ComboBox<>();
-    roleBox.getItems().addAll("Mahasiswa", "Dosen", "Admin", "Petugas");
+    roleBox.getItems().addAll("Mahasiswa", "Karyawan", "Dosen", "Admin", "Superadmin");
     roleBox.setValue(user.getRole());
 
     ComboBox<String> statusBox = new ComboBox<>();
@@ -884,7 +880,7 @@ phoneCol.setCellValueFactory(
         HBox.setHgrow(positionSpacer, Priority.ALWAYS);
         
         ComboBox<String> positionCombo = new ComboBox<>();
-        positionCombo.getItems().addAll("Mahasiswa", "Dosen", "Admin", "Petugas");
+        positionCombo.getItems().addAll("Mahasiswa", "Dosen", "Karyawan", "Admin", "Superadmin");
         positionCombo.setPromptText("Select position");
         positionCombo.setStyle(
             "-fx-background-color: white; " +
@@ -920,7 +916,6 @@ phoneCol.setCellValueFactory(
         
         submitBtn.setOnAction(e -> {
             if (firstNameField.getText().trim().isEmpty()
-                || lastNameField.getText().trim().isEmpty()
                 || dobPicker.getValue() == null
                 || pobField.getText().trim().isEmpty()
                 || positionCombo.getValue() == null) {
@@ -950,7 +945,9 @@ phoneCol.setCellValueFactory(
             
             if(selectedPhoto[0] != null){
                 user.setPhoto(fileToBytes(selectedPhoto[0]));
-            }
+            }else {   
+            user.setPhoto(new byte[0]);
+             }
             
            UserAdminDAO dao = new UserAdminDAO();
 boolean success = dao.insert(user);

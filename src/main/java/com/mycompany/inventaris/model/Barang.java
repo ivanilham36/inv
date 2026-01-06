@@ -17,8 +17,7 @@ public class Barang {
     private int stok;
     private String kondisi;
     private String lokasi;
-    private String status;
-    
+    private String status;    
     public Barang(int id_barang, String kode_barang, String nama_barang, String kategori,
                   int stok, String kondisi, String lokasi, String status){
         
@@ -96,3 +95,4 @@ public class Barang {
         this.status = status;
     }
 }
+
