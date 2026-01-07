@@ -55,7 +55,7 @@ public class ReplacementDAO {
 
             ps.setString(1, status);        // APPROVED / REJECTED
             ps.setString(2, keterangan);
-            ps.setInt(3, id_replacement);   // ✅ FIX
+            ps.setInt(3, id_replacement);   // ✅ FI
 
             return ps.executeUpdate() > 0;
 
