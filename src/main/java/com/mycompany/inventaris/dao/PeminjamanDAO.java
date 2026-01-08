@@ -18,9 +18,6 @@ public class PeminjamanDAO {
 
     // =========================
     // INSERT PEMINJAMAN
-    // status default: 'pending'
-    // stok TIDAK dikurangi di sini
-    // lokasi wajib (kalau kosong -> "-")
     // =========================
     public boolean insert(Peminjaman pn) {
 
@@ -266,8 +263,6 @@ public class PeminjamanDAO {
 
     // =========================
     // VERIFIKASI SETUJU (ADMIN)
-    // stok berkurang DI SINI SAJA
-    // amanin double approve: AND status='pending'
     // =========================
     public boolean verifikasiSetuju(int idPeminjaman) {
 
@@ -445,7 +440,6 @@ public class PeminjamanDAO {
 
     // =========================
     // ADMIN: SETUJUI PENGEMBALIAN
-    // stok bertambah DI SINI
     // =========================
     public boolean verifikasiPengembalianSetuju(int idPeminjaman) {
 
@@ -520,7 +514,6 @@ public class PeminjamanDAO {
 
     // =========================
     // ADMIN: TOLAK PENGEMBALIAN
-    // balik ke 'dipinjam'
     // =========================
     public boolean verifikasiPengembalianTolak(int idPeminjaman) {
         String sql = """

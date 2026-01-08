@@ -39,12 +39,9 @@ public class PenggantianBarangPage extends BorderPane {
     public PenggantianBarangPage(User user) {
         this.user = user;
         initializeUI();
-        loadFromDatabase(); // ✅ ganti dummy -> load dari DB
+        loadFromDatabase(); 
     }
 
-    // =========================
-    // LOAD DATA FROM DB (replacement)
-    // =========================
     private void loadFromDatabase() {
         masterData.clear();
 
@@ -77,8 +74,8 @@ public class PenggantianBarangPage extends BorderPane {
                     String namaPeminjam = rs.getString("nama_user");
                     String tanggal = String.valueOf(rs.getDate("tanggal_pengajuan"));
 
-                    String kondisiDb = rs.getString("kondisi_barang"); // hilang/rusak ringan/rusak berat
-                    String statusDb = rs.getString("status");          // pending/approved/rejected
+                    String kondisiDb = rs.getString("kondisi_barang"); 
+                    String statusDb = rs.getString("status");          
 
                     masterData.add(new BarangRusakData(
                         idLaporan,

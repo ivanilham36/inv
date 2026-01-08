@@ -12,10 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ReplacementDAO {
-
-    // =========================
-    // USER: INSERT PENGAJUAN REPLACEMENT
-    // =========================
     public static boolean insert(Replacement r) {
         String sql = """
             INSERT INTO replacement
@@ -121,9 +117,6 @@ public class ReplacementDAO {
         }
     }
 
-    // =========================
-    // ADMIN: TOLAK REPLACEMENT
-    // =========================
     public boolean tolakReplacement(int idReplacement) {
         String sql = """
             UPDATE replacement
@@ -182,7 +175,6 @@ public class ReplacementDAO {
                 r.setAlasan(rs.getString("alasan"));
                 r.setKondisiBarang(rs.getString("kondisi_barang"));
                 r.setStatus(rs.getString("status"));
-                // kalau model Replacement kamu punya lokasi/nama/kode buat ditampilkan, set juga.
                 return r;
             }
 

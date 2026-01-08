@@ -24,9 +24,15 @@ public class VerifikasiDTO {
         this.idBarang = idBarang; 
     }
 
-    public int getIdPeminjaman() { return idPeminjaman; }
-    public String getNamaUser() { return namaUser; }
-    public String getTanggal() { return tanggal; }
+    public int getIdPeminjaman() { 
+        return idPeminjaman; 
+    }
+    public String getNamaUser() { 
+        return namaUser; 
+    }
+    public String getTanggal() { 
+        return tanggal; 
+    }
     public String getNamaKodeBarang() { return namaKodeBarang; }
     public int getJumlah() { return jumlah; }
     public String getRuang() { return ruang; }
