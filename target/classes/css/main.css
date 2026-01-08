@@ -1,50 +1,10 @@
-/*
-Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
-Click nbfs://nbhost/SystemFileSystem/Templates/Other/CascadeStyleSheet.css to edit this template
-*/
-/* 
-    Created on : 24 Nov 2025, 09.54.16
-    Author     : pnady
-*/
+/* ========== GLOBAL ========== */
+@font-face {
+    -fx-font-family: "Poppins";
+    src: url("/fonts/Poppins-Regular.ttf");
+}
 
 .root {
-    -fx-background-color: #ffffff;
-    -fx-font-family: "Poppins";
+    -fx-background-color: #f8fafc;
+    -fx-font-family: Poppins;
 }
-
-/* NAVBAR */
-.navbar {
-    -fx-background-color: #ffffff;
-}
-
-.label {
-    -fx-font-size: 15px;
-}
-
-/* TITLE */
-.title {
-    -fx-font-size: 28px;
-    -fx-font-weight: bold;
-}
-
-.subtitle {
-    -fx-font-size: 14px;
-    -fx-text-fill: #444444;
-}
-
-/* BUTTONS */
-.btn-red {
-    -fx-background-color: #9b1c1c;
-    -fx-text-fill: white;
-    -fx-padding: 10 30;
-    -fx-background-radius: 20;
-}
-
-.btn-blue {
-    -fx-background-color: #2c3e50;
-    -fx-text-fill: white;
-    -fx-padding: 10 30;
-    -fx-background-radius: 20;
-}
-
-

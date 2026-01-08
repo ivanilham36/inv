@@ -43,7 +43,26 @@ public class AuditTrailPage extends BorderPane {
     private User superadmin;
     private DatePicker startDatePicker;
     private DatePicker endDatePicker;
-    private static final long MAX_IMAGE_SIZE = 5L * 1024 * 1024; // 5MB
+    private Pagination pagination;
+    private static final int ROWS_PER_PAGE = 10;
+    private List<AuditLog> filteredData = new ArrayList<>();
+    private VBox createPage(int pageIndex) {
+    int fromIndex = pageIndex * ROWS_PER_PAGE;
+    int toIndex = Math.min(fromIndex + ROWS_PER_PAGE, filteredData.size());
+
+    table.getItems().setAll(filteredData.subList(fromIndex, toIndex));
+
+    return new VBox(); // required by Pagination
+}
+    private void updatePagination() {
+    int pageCount = (int) Math.ceil((double) filteredData.size() / ROWS_PER_PAGE);
+    pagination.setPageCount(Math.max(pageCount, 1));
+    pagination.setCurrentPageIndex(0);
+    createPage(0);
+}
+
+
+    private static final long MAX_IMAGE_SIZE = 5L * 1024 * 1024;
     private byte[] fileToBytes(File file) {
     try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
         return fis.readAllBytes();
@@ -234,8 +253,7 @@ private void openProfilePhotoDialog(ImageView sidebarImage) {
        userCombo = new ComboBox<>();
 userCombo.setPrefWidth(180);
 
-/* first item = blank */
-userCombo.getItems().add("");
+userCombo.getItems().add("Semua Pengguna");
 
 UserAdminDAO userDao = new UserAdminDAO();
 List<User> users = userDao.getAll();
@@ -246,8 +264,8 @@ for (User u : users) {
     );
 }
 
-/* default selected = blank */
-userCombo.setValue("");
+userCombo.setValue("Semua Pengguna");
+
 
         userCombo.setPrefWidth(180);
         userFilterBox.getChildren().addAll(userLabel, userCombo);
@@ -256,8 +274,8 @@ userCombo.setValue("");
         Label actionLabel = new Label("Jenis Aksi");
         actionLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b; -fx-font-weight: bold;");
         ComboBox<String> actionCombo = new ComboBox<>();
-        actionCombo.getItems().addAll("", "LOGIN", "LOGOUT", "EDIT_USER", "TAMBAH_USER", "EDIT_BARANG", "HAPUS_BARANG", "TAMBAH_BARANG", "PEMINJAMAN", "PENGEMBALIAN", "PENGGUNAAN", "VERIFIKASI", "EKSPOR_DATA");
-        actionCombo.setValue("");
+        actionCombo.getItems().addAll("Semua Aksi", "LOGIN", "LOGOUT", "EDIT_USER", "TAMBAH_USER", "EDIT_BARANG", "HAPUS_BARANG", "TAMBAH_BARANG", "PEMINJAMAN", "PENGEMBALIAN", "PENGGUNAAN", "VERIFIKASI", "EKSPOR_DATA");
+        actionCombo.setValue("Semua Aksi");
         actionCombo.setPrefWidth(180);
         actionFilterBox.getChildren().addAll(actionLabel, actionCombo);
 
@@ -289,9 +307,8 @@ userCombo.setValue("");
         resetBtn.setOnAction(e -> {
             startDatePicker.setValue(null);
             endDatePicker.setValue(null);
-            userCombo.setValue("");
-            actionCombo.setValue("");
-            refreshTable(allData);
+            userCombo.setValue("Semua Pengguna");
+            actionCombo.setValue("Semua Aksi");
         });
 
         Region spacer1 = new Region();
@@ -319,6 +336,20 @@ userCombo.setValue("");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+    Button refreshBtn = new Button("🔄 Refresh Data");
+    refreshBtn.setStyle(
+    "-fx-background-color: #0ea5e9; " +
+    "-fx-text-fill: white; " +
+    "-fx-padding: 10 20; " +
+    "-fx-background-radius: 8; " +
+    "-fx-font-size: 13px; " +
+    "-fx-font-weight: bold; " +
+    "-fx-cursor: hand;"
+    );
+
+    refreshBtn.setOnAction(e -> reloadAuditData());
+
+        
         Button exportBtn = new Button("📥 Ekspor ke CSV");
         exportBtn.setStyle(
             "-fx-background-color: #22c55e; " +
@@ -331,10 +362,12 @@ userCombo.setValue("");
         );
         exportBtn.setOnAction(e -> showExportDialog());
 
-        topBar.getChildren().addAll(searchField, spacer, exportBtn);
+        topBar.getChildren().addAll(searchField, spacer, refreshBtn, exportBtn);
 
         // Table
         table = new TableView<>();
+        pagination = new Pagination();
+        pagination.setPageFactory(this::createPage);
         table.setStyle("-fx-background-color: white; -fx-background-radius: 10;");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setTableMenuButtonVisible(false);
@@ -444,16 +477,27 @@ userCombo.setValue("");
             }
         });
 
-     searchField.textProperty().addListener((obs, old, newVal) -> {
-    currentSearchKeyword = newVal == null ? "" : newVal.toLowerCase();
-    applyFilters(userCombo.getValue(), actionCombo.getValue());
+searchField.textProperty().addListener((obs, old, newVal) -> {
+    currentSearchKeyword = newVal == null ? "" : newVal.trim().toLowerCase();
+
+    if (pagination != null) {
+        applyFilters(userCombo.getValue(), actionCombo.getValue());
+    }
 });
+
 
 
         // Stats Card
         HBox statsCard = createStatsCard();
-
-        mainContent.getChildren().addAll(title, filterSection, statsCard, topBar, table);
+        
+mainContent.getChildren().addAll(
+        title,
+        filterSection,
+        statsCard,
+        topBar,
+        table,
+        pagination
+);
 
         this.setLeft(sidebar);
         this.setCenter(mainContent);
@@ -533,8 +577,7 @@ userCombo.setValue("");
             .collect(Collectors.toList());
     }
 
-    // 2. User dropdown
-    if (user != null && !user.isEmpty()) {
+if (user != null && !user.equals("Semua Pengguna")) {
         String selectedUsername = user.split(" - ")[0];
         filtered = filtered.stream()
             .filter(log -> log.getUserName().equals(selectedUsername))
@@ -565,10 +608,27 @@ userCombo.setValue("");
 }
 
 
-    private void refreshTable(List<AuditLog> data) {
-        table.getItems().clear();
-        data.forEach(log -> table.getItems().add(log));
-    }
+private void refreshTable(List<AuditLog> data) {
+   filteredData.clear();
+   filteredData.addAll(data);   
+   updatePagination();
+
+}
+
+private void reloadAuditData() {
+    // Re-fetch from database
+    allData = AuditTrailDAO.getAll();
+
+    // Clear filters
+    startDatePicker.setValue(null);
+    endDatePicker.setValue(null);
+    userCombo.setValue("Semua Pengguna");
+    currentSearchKeyword = "";
+
+    // Refresh table + pagination
+    refreshTable(allData);
+}
+
 
     private void showExportDialog() {
         Stage dialog = new Stage();

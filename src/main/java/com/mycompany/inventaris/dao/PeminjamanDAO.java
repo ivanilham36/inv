@@ -17,13 +17,16 @@ import java.util.List;
 public class PeminjamanDAO {
 
     // =========================
-    // INSERT PEMINJAMAN (TANPA UPDATE STOK)
-    // status default: pending
+    // INSERT PEMINJAMAN
+    // status default: 'pending'
+    // stok TIDAK dikurangi di sini
     // lokasi wajib (kalau kosong -> "-")
     // =========================
     public boolean insert(Peminjaman pn) {
+
         String sql = """
-            INSERT INTO peminjaman (id_user, id_barang, jumlah, tanggal_peminjaman, tanggal_kembali, lokasi, status)
+            INSERT INTO peminjaman
+            (id_user, id_barang, jumlah, tanggal_peminjaman, tanggal_kembali, lokasi, status)
             VALUES (?, ?, ?, ?, ?, ?, 'pending')
         """;
 
@@ -46,8 +49,7 @@ public class PeminjamanDAO {
             if (lokasi == null || lokasi.trim().isEmpty()) lokasi = "-";
             ps.setString(6, lokasi);
 
-            ps.executeUpdate();
-            return true;
+            return ps.executeUpdate() > 0;
 
         } catch (Exception e) {
             System.out.println("Insert Peminjaman Error: " + e.getMessage());
@@ -64,7 +66,7 @@ public class PeminjamanDAO {
 
         String sql = """
             SELECT 
-                p.id_peminjaman,     
+                p.id_peminjaman,
                 u.name AS nama_peminjam,
                 u.role,
                 b.nama_barang,
@@ -186,6 +188,7 @@ public class PeminjamanDAO {
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, id_user);
+
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Peminjaman p = new Peminjaman(
@@ -199,7 +202,7 @@ public class PeminjamanDAO {
                         rs.getDate("tanggal_kembali"),
                         rs.getString("status")
                     );
-                    // lokasi optional (kalau model belum ada, aman karena try-catch)
+
                     try { p.setLokasi(rs.getString("lokasi")); } catch (Exception ignore) {}
                     list.add(p);
                 }
@@ -214,9 +217,57 @@ public class PeminjamanDAO {
     }
 
     // =========================
+    // GET MENUNGGU VERIFIKASI (ADMIN)
+    // =========================
+    public List<VerifikasiDTO> getMenungguVerifikasi() {
+        List<VerifikasiDTO> list = new ArrayList<>();
+
+        String sql = """
+            SELECT 
+                p.id_peminjaman,
+                u.name AS nama_user,
+                p.tanggal_peminjaman,
+                CONCAT(b.nama_barang, ' (', b.kode_barang, ')') AS nama_kode_barang,
+                p.jumlah,
+                IFNULL(NULLIF(p.lokasi,''), '-') AS ruang,
+                p.status,
+                p.id_barang
+            FROM peminjaman p
+            JOIN user u ON p.id_user = u.id_user
+            JOIN barang b ON p.id_barang = b.id_barang
+            WHERE p.status = 'pending'
+            ORDER BY p.tanggal_peminjaman DESC
+        """;
+
+        try (Connection conn = Koneksi.getKoneksi();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                list.add(new VerifikasiDTO(
+                    rs.getInt("id_peminjaman"),
+                    rs.getString("nama_user"),
+                    rs.getDate("tanggal_peminjaman").toString(),
+                    rs.getString("nama_kode_barang"),
+                    rs.getInt("jumlah"),
+                    rs.getString("ruang"),
+                    rs.getString("status"),
+                    rs.getInt("id_barang")
+                ));
+            }
+
+        } catch (Exception e) {
+            System.out.println("Get Menunggu Verifikasi Error: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    // =========================
     // VERIFIKASI SETUJU (ADMIN)
     // stok berkurang DI SINI SAJA
-    // amanin double approve (AND status='pending')
+    // amanin double approve: AND status='pending'
     // =========================
     public boolean verifikasiSetuju(int idPeminjaman) {
 
@@ -273,7 +324,6 @@ public class PeminjamanDAO {
                 ps1.setInt(1, idPeminjaman);
                 updated = ps1.executeUpdate();
             }
-
             if (updated == 0) {
                 conn.rollback();
                 return false;
@@ -321,52 +371,6 @@ public class PeminjamanDAO {
         }
     }
 
-    public List<VerifikasiDTO> getMenungguVerifikasi() {
-    List<VerifikasiDTO> list = new ArrayList<>();
-
-    String sql = """
-        SELECT 
-            p.id_peminjaman,
-            u.name AS nama_user,
-            p.tanggal_peminjaman,
-            CONCAT(b.nama_barang, ' (', b.kode_barang, ')') AS nama_kode_barang,
-            p.jumlah,
-            IFNULL(NULLIF(p.lokasi,''), '-') AS ruang,
-            p.status,
-            p.id_barang
-        FROM peminjaman p
-        JOIN user u ON p.id_user = u.id_user
-        JOIN barang b ON p.id_barang = b.id_barang
-        WHERE p.status = 'pending'
-        ORDER BY p.tanggal_peminjaman
-    """;
-
-    try (Connection conn = Koneksi.getKoneksi();
-         PreparedStatement ps = conn.prepareStatement(sql);
-         ResultSet rs = ps.executeQuery()) {
-
-        while (rs.next()) {
-            list.add(new VerifikasiDTO(
-                rs.getInt("id_peminjaman"),
-                rs.getString("nama_user"),
-                rs.getDate("tanggal_peminjaman").toString(),
-                rs.getString("nama_kode_barang"),
-                rs.getInt("jumlah"),
-                rs.getString("ruang"),
-                rs.getString("status"),
-                rs.getInt("id_barang")
-            ));
-        }
-
-    } catch (Exception e) {
-        System.out.println("Get Menunggu Verifikasi Error: " + e.getMessage());
-        e.printStackTrace();
-    }
-
-    return list;
-}
-
-
     // =========================
     // USER: AJUKAN PENGEMBALIAN
     // =========================
@@ -404,12 +408,14 @@ public class PeminjamanDAO {
                 p.tanggal_peminjaman,
                 CONCAT(b.nama_barang, ' (', b.kode_barang, ')') AS nama_kode_barang,
                 p.jumlah,
-                IFNULL(NULLIF(p.lokasi,''), '-') AS ruang
+                IFNULL(NULLIF(p.lokasi,''), '-') AS ruang,
+                p.status,
+                p.id_barang
             FROM peminjaman p
             JOIN user u ON p.id_user = u.id_user
             JOIN barang b ON p.id_barang = b.id_barang
             WHERE p.status = 'pengembalian'
-            ORDER BY p.tanggal_peminjaman
+            ORDER BY p.tanggal_peminjaman DESC
         """;
 
         try (Connection conn = Koneksi.getKoneksi();
@@ -417,17 +423,17 @@ public class PeminjamanDAO {
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-            list.add(new VerifikasiDTO(
-                rs.getInt("id_peminjaman"),
-                rs.getString("nama_user"),
-                rs.getDate("tanggal_peminjaman").toString(),
-                rs.getString("nama_kode_barang"),
-                rs.getInt("jumlah"),
-                rs.getString("ruang"),
-                rs.getString("status"),
-                rs.getInt("id_barang")
-            ));
-        }
+                list.add(new VerifikasiDTO(
+                    rs.getInt("id_peminjaman"),
+                    rs.getString("nama_user"),
+                    rs.getDate("tanggal_peminjaman").toString(),
+                    rs.getString("nama_kode_barang"),
+                    rs.getInt("jumlah"),
+                    rs.getString("ruang"),
+                    rs.getString("status"),
+                    rs.getInt("id_barang")
+                ));
+            }
 
         } catch (Exception e) {
             System.out.println("Get Menunggu Pengembalian Error: " + e.getMessage());
@@ -483,13 +489,12 @@ public class PeminjamanDAO {
                 }
             }
 
-            // 2) update peminjaman (harus status pengembalian)
+            // 2) update peminjaman
             int updated;
             try (PreparedStatement ps = conn.prepareStatement(updatePeminjaman)) {
                 ps.setInt(1, idPeminjaman);
                 updated = ps.executeUpdate();
             }
-
             if (updated == 0) {
                 conn.rollback();
                 return false;
@@ -515,7 +520,7 @@ public class PeminjamanDAO {
 
     // =========================
     // ADMIN: TOLAK PENGEMBALIAN
-    // BALIK KE 'dipinjam' (lebih masuk akal daripada 'ditolak')
+    // balik ke 'dipinjam'
     // =========================
     public boolean verifikasiPengembalianTolak(int idPeminjaman) {
         String sql = """
@@ -539,8 +544,7 @@ public class PeminjamanDAO {
     }
 
     // =========================
-    // COMBOBOX PENGGANTIAN:
-    // BARANG YANG SEDANG DIPINJAM USER
+    // COMBOBOX: BARANG YANG SEDANG DIPINJAM USER
     // =========================
     public static List<PeminjamanChoice> getDipinjamByUser(int idUser) {
         List<PeminjamanChoice> list = new ArrayList<>();
@@ -558,6 +562,7 @@ public class PeminjamanDAO {
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, idUser);
+
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     list.add(new PeminjamanChoice(
