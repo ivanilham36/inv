@@ -9,25 +9,23 @@ package com.mycompany.inventaris.model;
  * @author pnady
  */
 public class DetailBarang {
-    private String lokasi;
-    private String idBarang;
-    private String namaBarang;
-    private String qty;
+    private final int idBarang;
+    private final String kodeBarang;
+    private final String namaBarang;
+    private final String lokasi;
+    private final int stok;
 
-    public DetailBarang(String lokasi, String idBarang, String namaBarang, String qty) {
-        this.lokasi = lokasi;
+    public DetailBarang(int idBarang, String kodeBarang, String namaBarang, String lokasi, int stok) {
         this.idBarang = idBarang;
+        this.kodeBarang = kodeBarang;
         this.namaBarang = namaBarang;
-        this.qty = qty;
+        this.lokasi = lokasi;
+        this.stok = stok;
     }
 
-    public String getLokasi() { return lokasi; }
-    public void setLokasi(String lokasi) { this.lokasi = lokasi; }
-    public String getIdBarang() { return idBarang; }
-    public void setIdBarang(String idBarang) { this.idBarang = idBarang; }
+    public int getIdBarang() { return idBarang; }
+    public String getKodeBarang() { return kodeBarang; }
     public String getNamaBarang() { return namaBarang; }
-    public void setNamaBarang(String namaBarang) { this.namaBarang = namaBarang; }
-    public String getQty() { return qty; }
-    public void setQty(String qty) { this.qty = qty; } // supaya bisa update
-
+    public String getLokasi() { return lokasi; }
+    public int getStok() { return stok; }
 }

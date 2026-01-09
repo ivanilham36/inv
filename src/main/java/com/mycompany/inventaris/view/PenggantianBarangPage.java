@@ -7,7 +7,6 @@ import com.mycompany.inventaris.dao.ReplacementDAO;
 import com.mycompany.inventaris.model.PeminjamanChoice;
 import com.mycompany.inventaris.model.Replacement;
 
-// ⚠️ ganti sesuai class koneksi kamu
 import com.mycompany.inventaris.Koneksi;
 
 import javafx.beans.property.SimpleStringProperty;

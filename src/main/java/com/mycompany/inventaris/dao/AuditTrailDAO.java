@@ -28,6 +28,8 @@ public class AuditTrailDAO {
         try {
             Connection conn = Koneksi.getKoneksi();
             PreparedStatement ps = conn.prepareStatement(sql);
+            
+            conn.setAutoCommit(true);
 
             ps.setInt(1, userId);
             ps.setString(2, userName);

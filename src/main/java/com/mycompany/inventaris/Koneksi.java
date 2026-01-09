@@ -6,7 +6,6 @@ import java.sql.SQLException;
 
 public class Koneksi {
     private static Connection connDb;
-
     public static Connection getKoneksi() {
         String url = "jdbc:mysql://3.0.41.12:3306/db_inventaris?useSSL=false&serverTimezone=Asia/Jakarta";
         String username = "inv";

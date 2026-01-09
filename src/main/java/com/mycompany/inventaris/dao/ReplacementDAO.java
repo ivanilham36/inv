@@ -127,55 +127,109 @@ public class ReplacementDAO {
     }
 
     public boolean setujuiReplacement(int idReplacement) {
-    String sql = """
+
+    String cek = """
+        SELECT id_barang
+        FROM replacement
+        WHERE id_replacement = ?
+          AND status = 'pending'
+        FOR UPDATE
+    """;
+
+    String updReplacement = """
         UPDATE replacement
-        SET status = 'approved'
+        SET status = 'approved',
+            id_admin = ?,
+            tanggal_verifikasi = NOW()
         WHERE id_replacement = ?
           AND status = 'pending'
     """;
 
-    try (Connection conn = Koneksi.getKoneksi();
-         PreparedStatement ps = conn.prepareStatement(sql)) {
+    String updBarang = """
+        UPDATE barang
+        SET kondisi = 'rusak',
+            status  = 'rusak'
+        WHERE id_barang = ?
+    """;
 
-        ps.setInt(1, idReplacement);
+    Connection conn = null;
+    try {
+        conn = Koneksi.getKoneksi();
+        conn.setAutoCommit(false);
 
-        int rows = ps.executeUpdate();
-        boolean ok = rows > 0;
+        int idBarang;
 
-        AuditTrailDAO.log(
-            SessionManager.getUserId(),
-            SessionManager.getUsername(),
+        // 1) lock replacement & ambil id_barang
+        try (PreparedStatement ps = conn.prepareStatement(cek)) {
+            ps.setInt(1, idReplacement);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    conn.rollback();
+                    AuditTrailDAO.log(SessionManager.getUserId(), SessionManager.getUsername(),
+                        "VERIFIKASI_REPLACEMENT_SETUJU",
+                        "Gagal: replacement tidak ditemukan / bukan pending (id=" + idReplacement + ")",
+                        SessionManager.getIp(), "GAGAL");
+                    return false;
+                }
+                idBarang = rs.getInt("id_barang");
+            }
+        }
+
+        // 2) update replacement
+        int a;
+        try (PreparedStatement ps = conn.prepareStatement(updReplacement)) {
+            ps.setInt(1, SessionManager.getUserId());
+            ps.setInt(2, idReplacement);
+            a = ps.executeUpdate();
+        }
+        if (a == 0) {
+            conn.rollback();
+            AuditTrailDAO.log(SessionManager.getUserId(), SessionManager.getUsername(),
+                "VERIFIKASI_REPLACEMENT_SETUJU",
+                "Gagal: update replacement tidak memenuhi syarat (id=" + idReplacement + ")",
+                SessionManager.getIp(), "GAGAL");
+            return false;
+        }
+
+        // 3) update barang jadi rusak (disable dipinjam)
+        try (PreparedStatement ps = conn.prepareStatement(updBarang)) {
+            ps.setInt(1, idBarang);
+            ps.executeUpdate();
+        }
+
+        conn.commit();
+
+        AuditTrailDAO.log(SessionManager.getUserId(), SessionManager.getUsername(),
             "VERIFIKASI_REPLACEMENT_SETUJU",
-            ok ? "Setujui replacement id=" + idReplacement
-               : "Gagal setujui replacement (status bukan pending?) id=" + idReplacement,
-            SessionManager.getIp(),
-            ok ? "BERHASIL" : "GAGAL"
-        );
+            "Setujui replacement id=" + idReplacement + " | id_barang=" + idBarang + " -> barang jadi RUSAK",
+            SessionManager.getIp(), "BERHASIL");
 
-        return ok;
+        return true;
 
     } catch (Exception e) {
+        try { if (conn != null) conn.rollback(); } catch (Exception ignore) {}
 
-        AuditTrailDAO.log(
-            SessionManager.getUserId(),
-            SessionManager.getUsername(),
+        AuditTrailDAO.log(SessionManager.getUserId(), SessionManager.getUsername(),
             "VERIFIKASI_REPLACEMENT_SETUJU",
-            "Error setujui replacement id=" + idReplacement + " | error=" + e.getMessage(),
-            SessionManager.getIp(),
-            "GAGAL"
-        );
+            "Error setujui replacement id=" + idReplacement + " | " + e.getMessage(),
+            SessionManager.getIp(), "GAGAL");
 
-        System.out.println("Setujui Replacement Error: " + e.getMessage());
         e.printStackTrace();
         return false;
+
+    } finally {
+        try { if (conn != null) conn.close(); } catch (Exception ignore) {}
     }
 }
+
 
 
     public boolean tolakReplacement(int idReplacement) {
     String sql = """
         UPDATE replacement
-        SET status = 'rejected'
+        SET status = 'rejected',
+            id_admin = ?,
+            tanggal_verifikasi = NOW()
         WHERE id_replacement = ?
           AND status = 'pending'
     """;
@@ -183,7 +237,8 @@ public class ReplacementDAO {
     try (Connection conn = Koneksi.getKoneksi();
          PreparedStatement ps = conn.prepareStatement(sql)) {
 
-        ps.setInt(1, idReplacement);
+        ps.setInt(1, SessionManager.getUserId()); // admin login
+        ps.setInt(2, idReplacement);
 
         int rows = ps.executeUpdate();
         boolean ok = rows > 0;
@@ -201,21 +256,19 @@ public class ReplacementDAO {
         return ok;
 
     } catch (Exception e) {
-
         AuditTrailDAO.log(
             SessionManager.getUserId(),
             SessionManager.getUsername(),
             "VERIFIKASI_REPLACEMENT_TOLAK",
-            "Error tolak replacement id=" + idReplacement + " | error=" + e.getMessage(),
+            "Error tolak replacement id=" + idReplacement + " | " + e.getMessage(),
             SessionManager.getIp(),
             "GAGAL"
         );
-
-        System.out.println("Tolak Replacement Error: " + e.getMessage());
         e.printStackTrace();
         return false;
     }
 }
+
 
     
     public Replacement getDetail(int idReplacement) {

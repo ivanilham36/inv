@@ -169,14 +169,22 @@ public class PeminjamanBarangPage extends BorderPane {
                 infoBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-font-size: 18px; -fx-cursor: hand; -fx-padding: 0;");
 
                 plusBtn.setOnAction(e -> {
-                    BarangRow row = getTableView().getItems().get(getIndex());
+                    BarangRow row = getRowSafe();
+                    if(row == null) return;
+                    
+                    if(isDisabled(row)) return;
+                    
+                    if(row.quantity >= row.barang.getStok()) return;
+                    
                     row.quantity++;
                     countLabel.setText(String.valueOf(row.quantity));
-                    if (!selectedItems.contains(row)) selectedItems.add(row);
+                    if(!selectedItems.contains(row)) selectedItems.add(row);
                 });
 
                 minusBtn.setOnAction(e -> {
-                    BarangRow row = getTableView().getItems().get(getIndex());
+                    BarangRow row = getRowSafe();
+                    if (row == null) return;
+
                     if (row.quantity > 0) {
                         row.quantity--;
                         countLabel.setText(String.valueOf(row.quantity));
@@ -185,7 +193,8 @@ public class PeminjamanBarangPage extends BorderPane {
                 });
 
                 infoBtn.setOnAction(e -> {
-                    BarangRow row = getTableView().getItems().get(getIndex());
+                    BarangRow row = getRowSafe();
+                    if(row == null) return;
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
                     alert.setTitle("Info Barang");
                     alert.setHeaderText(row.barang.getNama());
@@ -202,17 +211,59 @@ public class PeminjamanBarangPage extends BorderPane {
                 actionBox.getChildren().addAll(plusBtn, countLabel, minusBtn, infoBtn);
                 actionBox.setAlignment(Pos.CENTER);
             }
+            private BarangRow getRowSafe(){
+                if(getTableRow() == null) return null;
+                Object item = getTableRow().getItem();
+                if (item == null) return null;
+                return (BarangRow) item;
+            }
+            
+            private boolean isDisabled(BarangRow row){
+                String status = row.barang.getStatus();
+                String kondisi = row.barang.getKondisi();
+                
+                boolean disabled = false;
+                if(status != null){
+                    String s = status.toLowerCase();
+                    if(s.equals("rusak") || s.equals("dipinjam")) disabled = true;
+                }
+                
+                if(kondisi != null){
+                    String k = kondisi.toLowerCase();
+                    if(k.equals("rusak")) disabled = true;
+                }
+                
+                if(row.barang.getStok() <= 0) disabled = true;
+                return disabled;
+            }
 
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty) {
                     setGraphic(null);
-                } else {
-                    BarangRow row = getTableView().getItems().get(getIndex());
-                    countLabel.setText(String.valueOf(row.quantity));
-                    setGraphic(actionBox);
                 }
+                
+                BarangRow row = getRowSafe();
+                if (row == null) {
+                    setGraphic(null);
+                    return;
+                }
+
+                countLabel.setText(String.valueOf(row.quantity));
+
+                boolean disabled = isDisabled(row);
+                plusBtn.setDisable(disabled);
+                minusBtn.setDisable(disabled);
+                actionBox.setOpacity(disabled ? 0.4 : 1.0);
+
+                if (disabled && row.quantity > 0) {
+                    row.quantity = 0;
+                    selectedItems.remove(row);
+                    countLabel.setText("0");
+                }
+
+                setGraphic(actionBox);
             }
         });
 
@@ -534,12 +585,16 @@ public class PeminjamanBarangPage extends BorderPane {
                     }
 
                 } else {
+                    String lokasi = lokasiPengambilan.getText();
+                    if (lokasi == null || lokasi.trim().isEmpty()) lokasi = "-";
+                    
                     Peminjaman pm = new Peminjaman();
                     pm.setIdUser(user.getIdUser());
                     pm.setIdBarang(row.barang.getIdBarang());
                     pm.setJumlah(row.quantity);
                     pm.setTanggalPeminjaman(now);
-                    pm.setStatus("Dipinjam");
+                    pm.setStatus("pending");
+                    pm.setLokasi(lokasi); 
 
                     boolean sukses = peminjamanDAO.insert(pm);
                     if (!sukses) {
