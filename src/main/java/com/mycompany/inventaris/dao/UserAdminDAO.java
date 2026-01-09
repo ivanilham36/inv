@@ -6,6 +6,9 @@ package com.mycompany.inventaris.dao;
 
 import com.mycompany.inventaris.model.User;
 import com.mycompany.inventaris.Koneksi;
+import com.mycompany.inventaris.dao.AuditTrailDAO;
+import com.mycompany.inventaris.service.SessionManager;
+
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -21,29 +24,55 @@ public class UserAdminDAO {
 
     // INSERT user
     public boolean insert(User user) {
-        String sql = "INSERT INTO user (name, username, password, email, phone, birthPlace, " +
-                "birthDate, identity_number, role, status, photo) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+    String sql = "INSERT INTO user (name, username, password, email, phone, birthPlace, " +
+            "birthDate, identity_number, role, status, photo) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, user.getNama());
-            ps.setString(2, user.getUsername());
-            ps.setString(3, user.getPassword());
-            ps.setString(4, user.getEmail());
-            ps.setString(5, user.getPhone());
-            ps.setString(6, user.getPlace());
-            ps.setDate(7, new java.sql.Date(user.getBirth().getTime()));
-            ps.setString(8, user.getIdentity());
-            ps.setString(9, user.getRole());
-            ps.setString(10, user.getStatus());
-            ps.setBytes(11, user.getPhoto());
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        ps.setString(1, user.getNama());
+        ps.setString(2, user.getUsername());
+        ps.setString(3, user.getPassword());
+        ps.setString(4, user.getEmail());
+        ps.setString(5, user.getPhone());
+        ps.setString(6, user.getPlace());
+        ps.setDate(7, new java.sql.Date(user.getBirth().getTime()));
+        ps.setString(8, user.getIdentity());
+        ps.setString(9, user.getRole());
+        ps.setString(10, user.getStatus());
+        ps.setBytes(11, user.getPhoto());
 
-            return ps.executeUpdate() > 0;
+        int rows = ps.executeUpdate();
+        boolean ok = rows > 0;
 
-        } catch (Exception e) {
-            System.out.println("Insert User Error: " + e.getMessage());
-            return false;
-        }
+        AuditTrailDAO.log(
+            SessionManager.getUserId(),
+            SessionManager.getUsername(),
+            "TAMBAH_USER",
+            "Tambah user: username=" + user.getUsername()
+                + ", role=" + user.getRole()
+                + ", status=" + user.getStatus(),
+            SessionManager.getIp(),
+            ok ? "BERHASIL" : "GAGAL"
+        );
+
+        return ok;
+
+    } catch (Exception e) {
+
+        AuditTrailDAO.log(
+            SessionManager.getUserId(),
+            SessionManager.getUsername(),
+            "TAMBAH_USER",
+            "Error tambah user: username=" + user.getUsername()
+                + " | error=" + e.getMessage(),
+            SessionManager.getIp(),
+            "GAGAL"
+        );
+
+        System.out.println("Insert User Error: " + e.getMessage());
+        return false;
     }
+}
+
 
     // GET ALL users
     public List<User> getAll() {
@@ -93,13 +122,37 @@ public class UserAdminDAO {
         ps.setBytes(1, photo);
         ps.setInt(2, userId);
 
-        return ps.executeUpdate() > 0;
+        int rows = ps.executeUpdate();
+        boolean ok = rows > 0;
+
+        AuditTrailDAO.log(
+            SessionManager.getUserId(),
+            SessionManager.getUsername(),
+            "UPDATE_FOTO_USER",
+            ok ? "Update foto user id=" + userId
+               : "Gagal update foto user (id tidak ditemukan?) id=" + userId,
+            SessionManager.getIp(),
+            ok ? "BERHASIL" : "GAGAL"
+        );
+
+        return ok;
 
     } catch (Exception e) {
+
+        AuditTrailDAO.log(
+            SessionManager.getUserId(),
+            SessionManager.getUsername(),
+            "UPDATE_FOTO_USER",
+            "Error update foto user id=" + userId + " | error=" + e.getMessage(),
+            SessionManager.getIp(),
+            "GAGAL"
+        );
+
         System.out.println("Update User Photo Error: " + e.getMessage());
         return false;
     }
 }
+
 
     
     
@@ -112,7 +165,7 @@ public boolean update(User user) {
         ps.setString(1, user.getNama());
         ps.setString(2, user.getEmail());
         ps.setString(3, user.getPhone());
-        ps.setString(4, user.getPassword()); 
+        ps.setString(4, user.getPassword());
         ps.setString(5, user.getRole());
         ps.setString(6, user.getStatus());
         ps.setString(7, user.getPlace());
@@ -121,28 +174,80 @@ public boolean update(User user) {
         ps.setBytes(10, user.getPhoto());
         ps.setInt(11, user.getIdUser());
 
-        return ps.executeUpdate() > 0;
+        int rows = ps.executeUpdate();
+        boolean ok = rows > 0;
+
+        AuditTrailDAO.log(
+            SessionManager.getUserId(),
+            SessionManager.getUsername(),
+            "UPDATE_USER",
+            ok ? "Update user id=" + user.getIdUser()
+                 + " | username=" + user.getUsername()
+                 + " | role=" + user.getRole()
+                 + " | status=" + user.getStatus()
+               : "Gagal update user (id tidak ditemukan?) id=" + user.getIdUser(),
+            SessionManager.getIp(),
+            ok ? "BERHASIL" : "GAGAL"
+        );
+
+        return ok;
 
     } catch (Exception e) {
+
+        AuditTrailDAO.log(
+            SessionManager.getUserId(),
+            SessionManager.getUsername(),
+            "UPDATE_USER",
+            "Error update user id=" + user.getIdUser()
+                + " | error=" + e.getMessage(),
+            SessionManager.getIp(),
+            "GAGAL"
+        );
+
         System.out.println("Update User Error: " + e.getMessage());
         return false;
     }
 }
 
 
-    // DELETE user
-    public boolean delete(int id_user) {
-        String sql = "DELETE FROM user WHERE id_user=?";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+   public boolean delete(int id_user) {
+    String sql = "DELETE FROM user WHERE id_user=?";
 
-            ps.setInt(1, id_user);
-            return ps.executeUpdate() > 0;
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
 
-        } catch (Exception e) {
-            System.out.println("Delete User Error: " + e.getMessage());
-            return false;
-        }
+        ps.setInt(1, id_user);
+
+        int rows = ps.executeUpdate();
+        boolean ok = rows > 0;
+
+        AuditTrailDAO.log(
+            SessionManager.getUserId(),
+            SessionManager.getUsername(),
+            "HAPUS_USER",
+            ok ? "Hapus user id=" + id_user
+               : "Gagal hapus user (id tidak ditemukan?) id=" + id_user,
+            SessionManager.getIp(),
+            ok ? "BERHASIL" : "GAGAL"
+        );
+
+        return ok;
+
+    } catch (Exception e) {
+
+        AuditTrailDAO.log(
+            SessionManager.getUserId(),
+            SessionManager.getUsername(),
+            "HAPUS_USER",
+            "Error hapus user id=" + id_user + " | error=" + e.getMessage(),
+            SessionManager.getIp(),
+            "GAGAL"
+        );
+
+        System.out.println("Delete User Error: " + e.getMessage());
+        return false;
     }
+}
+
 }
 

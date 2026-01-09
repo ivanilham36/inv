@@ -1,17 +1,12 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.mycompany.inventaris.view;
-
-/**
- *
- * @author Amy
- */
 
 import com.mycompany.inventaris.model.User;
 import com.mycompany.inventaris.dao.AuditTrailDAO;
-import java.io.File;
+import com.mycompany.inventaris.dao.PeminjamanDAO;
+import com.mycompany.inventaris.dao.PengembalianDAO;
+import com.mycompany.inventaris.dao.ReplacementDAO;
+import com.mycompany.inventaris.model.VerifikasiDTO;
+
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -22,27 +17,29 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class VerifikasiPage extends BorderPane {
-    
-    private TableView<PermintaanData> table;
-    private List<PermintaanData> allData;
+
+    private TableView<VerifikasiDTO> table;
+    private List<VerifikasiDTO> allData = new ArrayList<>();
+
+    private final PeminjamanDAO peminjamanDAO = new PeminjamanDAO();
+    private final ReplacementDAO replacementDAO = new ReplacementDAO();
+    private final PengembalianDAO pengembalianDAO = new PengembalianDAO();
+
+
     private User admin;
-    
-    public VerifikasiPage(User admin) {    
+
+    // simpan pilihan mode aktif
+    private String modeAktif = "Peminjaman"; // default
+
+    public VerifikasiPage(User admin) {
         this.admin = admin;
-        allData = new ArrayList<>();
-        
-        // Dummy data permintaan dari user
-        allData.add(new PermintaanData("Medi Pribadi", "26/11/2025", "Spidol (RL001)", "1 pcs", "Lab SI & TI"));
-        allData.add(new PermintaanData("Medi Pribadi", "26/11/2025", "Penghapus Papan Tulis (RL002)", "1 pcs", "Lab SI & TI"));
-        allData.add(new PermintaanData("Ahmad Fauzi", "27/11/2025", "Laptop (NC001)", "1 pcs", "Lab Umum"));
-        allData.add(new PermintaanData("Siti Nurhaliza", "27/11/2025", "Proyektor (NC002)", "1 pcs", "Ruang 105"));
-        allData.add(new PermintaanData("Budi Santoso", "28/11/2025", "Webcam (NC003)", "2 pcs", "Lab SI"));
-        
         initializeUI();
+        loadData(); // default: peminjaman pending
     }
 
     private void initializeUI() {
@@ -69,10 +66,16 @@ public class VerifikasiPage extends BorderPane {
             "-fx-padding: 8 15;"
         );
 
+        // ✅ kategoriBox jadi pilihan data verifikasi (layout tetap)
         ComboBox<String> kategoriBox = new ComboBox<>();
-        kategoriBox.getItems().addAll("Semua Kategori", "Pending", "Approved", "Rejected");
-        kategoriBox.setValue("Semua Kategori");
+        kategoriBox.getItems().addAll("Peminjaman", "Pengembalian", "Replacement");
+        kategoriBox.setValue("Peminjaman");
         kategoriBox.setStyle("-fx-font-size: 13px; -fx-padding: 6;");
+        kategoriBox.setOnAction(e -> {
+            modeAktif = kategoriBox.getValue();
+            loadData();
+            searchField.clear();
+        });
 
         topBar.getChildren().addAll(searchField, kategoriBox);
 
@@ -86,53 +89,41 @@ public class VerifikasiPage extends BorderPane {
             if (newScene != null) {
                 javafx.application.Platform.runLater(() -> {
                     javafx.scene.Node headerBg = table.lookup(".column-header-background");
-                    if (headerBg != null) {
-                        headerBg.setStyle("-fx-background-color: #B71C1C;");
-                    }
-                    table.lookupAll(".column-header").forEach(node -> {
-                        node.setStyle("-fx-background-color: #B71C1C;");
-                    });
-                    table.lookupAll(".column-header > .label").forEach(node -> {
-                        node.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
-                    });
+                    if (headerBg != null) headerBg.setStyle("-fx-background-color: #B71C1C;");
+                    table.lookupAll(".column-header").forEach(node -> node.setStyle("-fx-background-color: #B71C1C;"));
+                    table.lookupAll(".column-header > .label").forEach(node -> node.setStyle("-fx-text-fill: white; -fx-font-weight: bold;"));
                     javafx.scene.Node filler = table.lookup(".filler");
-                    if (filler != null) {
-                        filler.setStyle("-fx-background-color: #B71C1C;");
-                    }
+                    if (filler != null) filler.setStyle("-fx-background-color: #B71C1C;");
                 });
             }
         });
 
-        TableColumn<PermintaanData, String> noCol = new TableColumn<>("No.");
+        TableColumn<VerifikasiDTO, String> noCol = new TableColumn<>("No.");
         noCol.setMinWidth(50);
         noCol.setMaxWidth(50);
         noCol.setStyle("-fx-alignment: CENTER;");
-        noCol.setCellValueFactory(data -> 
+        noCol.setCellValueFactory(data ->
             new SimpleStringProperty(String.valueOf(table.getItems().indexOf(data.getValue()) + 1)));
 
-        TableColumn<PermintaanData, String> namaCol = new TableColumn<>("Nama Pengguna");
+        TableColumn<VerifikasiDTO, String> namaCol = new TableColumn<>("Nama Pengguna");
         namaCol.setMinWidth(150);
-        namaCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNamaPengguna()));
+        namaCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNamaUser()));
 
-        TableColumn<PermintaanData, String> tanggalCol = new TableColumn<>("Tanggal Peminjaman");
+        // label kolom tanggal tetap sama (layout tidak berubah)
+        TableColumn<VerifikasiDTO, String> tanggalCol = new TableColumn<>("Tanggal Peminjaman");
         tanggalCol.setMinWidth(150);
-        tanggalCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTanggalPeminjaman()));
+        tanggalCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTanggal()));
 
-        TableColumn<PermintaanData, String> barangCol = new TableColumn<>("Nama & Kode Barang");
+        TableColumn<VerifikasiDTO, String> barangCol = new TableColumn<>("Nama & Kode Barang");
         barangCol.setMinWidth(200);
         barangCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNamaKodeBarang()));
 
-        TableColumn<PermintaanData, String> jumlahCol = new TableColumn<>("Jumlah Barang");
+        TableColumn<VerifikasiDTO, String> jumlahCol = new TableColumn<>("Jumlah Barang");
         jumlahCol.setMinWidth(120);
         jumlahCol.setMaxWidth(120);
-        jumlahCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getJumlahBarang()));
+        jumlahCol.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().getJumlah())));
 
-        TableColumn<PermintaanData, String> ruangCol = new TableColumn<>("Ruang");
-        ruangCol.setMinWidth(120);
-        ruangCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getRuang()));
-
-        // Aksi column dengan approve & reject button
-        TableColumn<PermintaanData, Void> aksiCol = new TableColumn<>("Aksi");
+        TableColumn<VerifikasiDTO, Void> aksiCol = new TableColumn<>("Aksi");
         aksiCol.setMinWidth(150);
         aksiCol.setMaxWidth(150);
         aksiCol.setCellFactory(col -> new TableCell<>() {
@@ -151,7 +142,7 @@ public class VerifikasiPage extends BorderPane {
                     "-fx-background-radius: 50; " +
                     "-fx-cursor: hand;"
                 );
-                
+
                 rejectBtn.setStyle(
                     "-fx-background-color: #dc2626; " +
                     "-fx-text-fill: white; " +
@@ -161,7 +152,7 @@ public class VerifikasiPage extends BorderPane {
                     "-fx-background-radius: 50; " +
                     "-fx-cursor: hand;"
                 );
-                
+
                 menuBtn.setStyle(
                     "-fx-background-color: transparent; " +
                     "-fx-text-fill: #64748b; " +
@@ -170,17 +161,17 @@ public class VerifikasiPage extends BorderPane {
                 );
 
                 approveBtn.setOnAction(e -> {
-                    PermintaanData data = getTableView().getItems().get(getIndex());
+                    VerifikasiDTO data = getTableView().getItems().get(getIndex());
                     handleApprove(data);
                 });
 
                 rejectBtn.setOnAction(e -> {
-                    PermintaanData data = getTableView().getItems().get(getIndex());
+                    VerifikasiDTO data = getTableView().getItems().get(getIndex());
                     handleReject(data);
                 });
 
                 menuBtn.setOnAction(e -> {
-                    PermintaanData data = getTableView().getItems().get(getIndex());
+                    VerifikasiDTO data = getTableView().getItems().get(getIndex());
                     showDetailPopup(data);
                 });
 
@@ -195,20 +186,20 @@ public class VerifikasiPage extends BorderPane {
             }
         });
 
-        table.getColumns().addAll(noCol, namaCol, tanggalCol, barangCol, jumlahCol, ruangCol, aksiCol);
-        allData.forEach(data -> table.getItems().add(data));
+        table.getColumns().addAll(noCol, namaCol, tanggalCol, barangCol, jumlahCol, aksiCol);
 
-        // Search functionality
+        // Search functionality (tetap sama)
         searchField.textProperty().addListener((obs, old, newVal) -> {
             table.getItems().clear();
-            if (newVal.isEmpty()) {
-                allData.forEach(data -> table.getItems().add(data));
+            if (newVal == null || newVal.isEmpty()) {
+                table.getItems().addAll(allData);
             } else {
                 String keyword = newVal.toLowerCase();
                 allData.stream()
-                    .filter(data -> 
-                        data.getNamaPengguna().toLowerCase().contains(keyword) ||
-                        data.getNamaKodeBarang().toLowerCase().contains(keyword))
+                    .filter(data ->
+                        (data.getNamaUser() != null && data.getNamaUser().toLowerCase().contains(keyword)) ||
+                        (data.getNamaKodeBarang() != null && data.getNamaKodeBarang().toLowerCase().contains(keyword))
+                    )
                     .forEach(data -> table.getItems().add(data));
             }
         });
@@ -219,62 +210,104 @@ public class VerifikasiPage extends BorderPane {
         this.setCenter(mainContent);
     }
 
-    private void handleApprove(PermintaanData data) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Konfirmasi Approve");
-        alert.setHeaderText(null);
-        alert.setContentText("Apakah Anda yakin ingin menyetujui permintaan dari " + data.getNamaPengguna() + "?");
-        
-        alert.showAndWait().ifPresent(response -> {
+    private void handleApprove(VerifikasiDTO v) {
+        String teks = switch (modeAktif) {
+            case "Pengembalian" -> "menyetujui pengembalian dari ";
+            case "Replacement" -> "menyetujui replacement dari ";
+            default -> "menyetujui peminjaman dari ";
+        };
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+            "Apakah Anda yakin ingin " + teks + v.getNamaUser() + "?",
+            ButtonType.OK, ButtonType.CANCEL);
+
+        confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-                Alert success = new Alert(Alert.AlertType.INFORMATION);
-                success.setTitle("Berhasil");
-                success.setHeaderText(null);
-                success.setContentText("Permintaan telah disetujui!");
-                success.showAndWait();
-                
-                // TODO: Update database status jadi Approved
-                // allData.remove(data);
-                // table.getItems().remove(data);
+
+                boolean success;
+                if ("Pengembalian".equals(modeAktif)) {
+                    success = pengembalianDAO.setujuiPengembalian(v.getIdPeminjaman());
+                } else if ("Replacement".equals(modeAktif)) {
+                    // idReplacement kita taruh di idPeminjaman DTO
+                    success = replacementDAO.setujuiReplacement(v.getIdPeminjaman());
+                } else {
+                    success = peminjamanDAO.verifikasiSetuju(v.getIdPeminjaman());
+                }
+
+                if (success) {
+                    new Alert(Alert.AlertType.INFORMATION, "Berhasil!").showAndWait();
+                    loadData();
+                } else {
+                    new Alert(Alert.AlertType.ERROR, "Gagal! Cek status / data di DB.").showAndWait();
+                }
             }
         });
     }
 
-    private void handleReject(PermintaanData data) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Konfirmasi Reject");
-        alert.setHeaderText(null);
-        alert.setContentText("Apakah Anda yakin ingin menolak permintaan dari " + data.getNamaPengguna() + "?");
-        
-        alert.showAndWait().ifPresent(response -> {
+    private void handleReject(VerifikasiDTO v) {
+        String teks = switch (modeAktif) {
+            case "Pengembalian" -> "menolak pengembalian dari ";
+            case "Replacement" -> "menolak replacement dari ";
+            default -> "menolak peminjaman dari ";
+        };
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+            "Apakah Anda yakin ingin " + teks + v.getNamaUser() + "?",
+            ButtonType.OK, ButtonType.CANCEL);
+
+        confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-                Alert success = new Alert(Alert.AlertType.INFORMATION);
-                success.setTitle("Berhasil");
-                success.setHeaderText(null);
-                success.setContentText("Permintaan telah ditolak!");
-                success.showAndWait();
-                
-                // TODO: Update database status jadi Rejected
-                // allData.remove(data);
-                // table.getItems().remove(data);
+
+                boolean success;
+                if ("Pengembalian".equals(modeAktif)) {
+                    success = pengembalianDAO.tolakPengembalian(v.getIdPeminjaman());
+                } else if ("Replacement".equals(modeAktif)) {
+                    success = replacementDAO.tolakReplacement(v.getIdPeminjaman());
+                } else {
+                    success = peminjamanDAO.verifikasiTolak(v.getIdPeminjaman());
+                }
+
+                if (success) {
+                    new Alert(Alert.AlertType.INFORMATION, "Berhasil!").showAndWait();
+                    loadData();
+                } else {
+                    new Alert(Alert.AlertType.ERROR, "Gagal!").showAndWait();
+                }
             }
         });
     }
 
-    private void showDetailPopup(PermintaanData data) {
+    private void loadData() {
+        table.getItems().clear();
+
+        if ("Pengembalian".equals(modeAktif)) {
+            allData = pengembalianDAO.getMenungguPengembalian(); 
+        } else if ("Replacement".equals(modeAktif)) {
+            allData = replacementDAO.getMenungguReplacement(); 
+        } else {
+            allData = peminjamanDAO.getMenungguVerifikasi();
+        }
+
+        table.getItems().addAll(allData);
+    }
+
+    private void showDetailPopup(VerifikasiDTO data) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Detail Permintaan");
         alert.setHeaderText("Informasi Lengkap");
         alert.setContentText(
-            "Nama: " + data.getNamaPengguna() + "\n" +
-            "Tanggal: " + data.getTanggalPeminjaman() + "\n" +
+            "Nama: " + data.getNamaUser() + "\n" +
+            "Tanggal: " + data.getTanggal() + "\n" +
             "Barang: " + data.getNamaKodeBarang() + "\n" +
-            "Jumlah: " + data.getJumlahBarang() + "\n" +
-            "Ruang: " + data.getRuang()
+            "Jumlah: " + data.getJumlah() + "\n" +
+            "Ruang: " + (data.getRuang() == null ? "-" : data.getRuang())
         );
         alert.showAndWait();
     }
 
+    // =========================
+    // SIDEBAR (KODE KAMU — TIDAK DIUBAH)
+    // =========================
     private VBox createSidebar() {
         VBox sidebar = new VBox(15);
         sidebar.setPadding(new Insets(20, 10, 20, 10));
@@ -292,17 +325,13 @@ public class VerifikasiPage extends BorderPane {
         VBox logoBox = new VBox(logo);
         logoBox.setAlignment(Pos.TOP_LEFT);
 
-         Image userPhoto;
+        Image userPhoto;
+        if (admin.getPhoto() != null && admin.getPhoto().length > 0) {
+            userPhoto = new Image(new java.io.ByteArrayInputStream(admin.getPhoto()));
+        } else {
+            userPhoto = new Image(getClass().getResourceAsStream("/assets/user.png"));
+        }
 
-    if (admin.getPhoto() != null && admin.getPhoto().length > 0) {
-        userPhoto = new Image(
-        new java.io.ByteArrayInputStream(admin.getPhoto())
-        );
-    } else {
-        userPhoto = new Image(
-        getClass().getResourceAsStream("/assets/user.png")
-    );
-    }
         ImageView userImage = new ImageView(userPhoto);
         userImage.setFitWidth(40);
         userImage.setFitHeight(40);
@@ -312,12 +341,12 @@ public class VerifikasiPage extends BorderPane {
 
         Label nameLabel = new Label(admin.getNama());
         nameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
-        
+
         Label roleLabel = new Label(admin.getRole().toUpperCase());
         roleLabel.setStyle(
-                "-fx-font-size: 10px;" +
-                "-fx-text-fill: #9ca3af;" +
-                "-fx-font-weight: normal;"
+            "-fx-font-size: 10px;" +
+            "-fx-text-fill: #9ca3af;" +
+            "-fx-font-weight: normal;"
         );
 
         VBox textBox = new VBox(2, nameLabel, roleLabel);
@@ -331,30 +360,27 @@ public class VerifikasiPage extends BorderPane {
         Button verifikasiBtn = createMenuButton("✓  Verifikasi", true);
         Button manageDataBtn = createMenuButton("⚙  Manage Data", false);
         Button laporanBtn = createMenuButton("📊  Laporan ▼", false);
-        
+
         VBox laporanSubMenu = new VBox(5);
         laporanSubMenu.setPadding(new Insets(0, 0, 0, 20));
         laporanSubMenu.setVisible(false);
         laporanSubMenu.setManaged(false);
 
-        Button laporanPinjamBtn =
-                createMenuButton("Laporan Peminjaman", false);
+        Button laporanPinjamBtn = createMenuButton("Laporan Peminjaman", false);
+        Button laporanGunaBtn = createMenuButton("Laporan Penggunaan", false);
 
-        Button laporanGunaBtn =
-                createMenuButton("Laporan Penggunaan", false);
-        
         dashboardBtn.setOnAction(e -> {
             Stage currentStage = (Stage) dashboardBtn.getScene().getWindow();
             Scene newScene = new Scene(new AdminPage(admin), 1280, 720);
             currentStage.setScene(newScene);
         });
-        
+
         manageDataBtn.setOnAction(e -> {
             Stage currentStage = (Stage) manageDataBtn.getScene().getWindow();
             Scene newScene = new Scene(new ManageDataPage(admin), 1280, 720);
             currentStage.setScene(newScene);
         });
-        
+
         laporanPinjamBtn.setOnAction(e -> {
             Stage s = (Stage) laporanBtn.getScene().getWindow();
             s.setScene(new Scene(new LaporanPeminjamanPage(admin), 1280, 720));
@@ -364,7 +390,7 @@ public class VerifikasiPage extends BorderPane {
             Stage s = (Stage) laporanGunaBtn.getScene().getWindow();
             s.setScene(new Scene(new LaporanPenggunaanPage(admin), 1280, 720));
         });
-        
+
         laporanBtn.setOnAction(e -> {
             boolean open = laporanSubMenu.isVisible();
             laporanSubMenu.setVisible(!open);
@@ -372,11 +398,7 @@ public class VerifikasiPage extends BorderPane {
             laporanBtn.setText(open ? "📊  Laporan ▼" : "📊  Laporan ▲");
         });
 
-        laporanSubMenu.getChildren().addAll(
-                laporanPinjamBtn,
-                laporanGunaBtn
-        );
-        
+        laporanSubMenu.getChildren().addAll(laporanPinjamBtn, laporanGunaBtn);
         menuBox.getChildren().addAll(dashboardBtn, verifikasiBtn, manageDataBtn, laporanBtn, laporanSubMenu);
 
         Region spacer = new Region();
@@ -392,86 +414,60 @@ public class VerifikasiPage extends BorderPane {
             "-fx-font-weight: bold; " +
             "-fx-cursor: hand;"
         );
-      logoutBtn.setOnAction(e -> {
-    String ip = "UNKNOWN";
-    try {
-        ip = java.net.InetAddress.getLocalHost().getHostAddress();
-    } catch (Exception ex) {
-        ex.printStackTrace();
-    }
 
-    AuditTrailDAO.log(
-        admin.getIdUser(),          
-        admin.getUsername(),         
-        "LOGOUT",
-        "Pengguna keluar dari sistem",
-        ip,
-        "BERHASIL"
-    );
+        logoutBtn.setOnAction(e -> {
+            String ip = "UNKNOWN";
+            try { ip = java.net.InetAddress.getLocalHost().getHostAddress(); }
+            catch (Exception ex) { ex.printStackTrace(); }
 
-    Stage currentStage = (Stage) logoutBtn.getScene().getWindow();
-    Scene newScene = new Scene(new MainPage(currentStage), 1280, 720);
-    currentStage.setScene(newScene);
-});
+            AuditTrailDAO.log(
+                admin.getIdUser(),
+                admin.getUsername(),
+                "LOGOUT",
+                "Pengguna keluar dari sistem",
+                ip,
+                "BERHASIL"
+            );
+
+            Stage currentStage = (Stage) logoutBtn.getScene().getWindow();
+            Scene newScene = new Scene(new MainPage(currentStage), 1280, 720);
+            currentStage.setScene(newScene);
+        });
 
         sidebar.getChildren().addAll(logoBox, userBox, menuBox, spacer, logoutBtn);
         return sidebar;
     }
 
-    // Inner class for PermintaanData
-    public static class PermintaanData {
-        private String namaPengguna;
-        private String tanggalPeminjaman;
-        private String namaKodeBarang;
-        private String jumlahBarang;
-        private String ruang;
-        
-        public PermintaanData(String namaPengguna, String tanggalPeminjaman, String namaKodeBarang, 
-                             String jumlahBarang, String ruang) {
-            this.namaPengguna = namaPengguna;
-            this.tanggalPeminjaman = tanggalPeminjaman;
-            this.namaKodeBarang = namaKodeBarang;
-            this.jumlahBarang = jumlahBarang;
-            this.ruang = ruang;
-        }
-        
-        public String getNamaPengguna() { return namaPengguna; }
-        public String getTanggalPeminjaman() { return tanggalPeminjaman; }
-        public String getNamaKodeBarang() { return namaKodeBarang; }
-        public String getJumlahBarang() { return jumlahBarang; }
-        public String getRuang() { return ruang; }
-    }
-    
     private Button createMenuButton(String text, boolean isActive) {
         Button btn = new Button(text);
-        
+
         btn.setWrapText(true);
         btn.setTextAlignment(javafx.scene.text.TextAlignment.LEFT);
         btn.setAlignment(Pos.CENTER_LEFT);
         btn.setMaxWidth(Double.MAX_VALUE);
         btn.setPrefHeight(Region.USE_COMPUTED_SIZE);
-    
+
         if (isActive) {
             btn.setStyle(
-                    "-fx-background-color: rgba(164,35,35,0.10);" +
-                    "-fx-font-weight: bold;" +
-                    "-fx-text-fill: #111827;" +
-                    "-fx-padding: 10 15;" +
-                    "-fx-background-radius: 6;" +
-                    "-fx-font-size: 13px;" +
-                    "-fx-alignment: center-left;" +
-                    "-fx-cursor: hand;"
+                "-fx-background-color: rgba(164,35,35,0.10);" +
+                "-fx-font-weight: bold;" +
+                "-fx-text-fill: #111827;" +
+                "-fx-padding: 10 15;" +
+                "-fx-background-radius: 6;" +
+                "-fx-font-size: 13px;" +
+                "-fx-alignment: center-left;" +
+                "-fx-cursor: hand;"
             );
         } else {
             btn.setStyle(
-                    "-fx-background-color: transparent;" +
-                    "-fx-font-size: 13px;" +
-                    "-fx-text-fill: #475569;" +
-                    "-fx-padding: 10 15;" +
-                    "-fx-font-weight: bold;" +
-                    "-fx-alignment: center-left;" +
-                    "-fx-background-radius: 6;" +
-                    "-fx-cursor: hand;"
+                "-fx-background-color: transparent;" +
+                "-fx-font-size: 13px;" +
+                "-fx-text-fill: #475569;" +
+                "-fx-padding: 10 15;" +
+                "-fx-font-weight: bold;" +
+                "-fx-alignment: center-left;" +
+                "-fx-background-radius: 6;" +
+                "-fx-cursor: hand;"
             );
         }
 

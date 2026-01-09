@@ -39,7 +39,7 @@ public class PengembalianBarangPage extends BorderPane {
     private List<Peminjaman> allData = new ArrayList<>();
     private List<Peminjaman> selectedItems = new ArrayList<>();
     private PeminjamanDAO peminjamanDAO = new PeminjamanDAO();
-    private PengembalianDAO pengembalianDAO = new PengembalianDAO();
+    private final PengembalianDAO pengembalianDAO = new PengembalianDAO();
     private User user;
     
     public PengembalianBarangPage(User user) {
@@ -493,46 +493,34 @@ public class PengembalianBarangPage extends BorderPane {
             "-fx-pref-width: 350;"
         );
         submitBtn.setOnAction(e -> {
-            if (namaPeminjam.getText().isEmpty() || lokasiPengembalian.getText().isEmpty()) {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("Error");
-                alert.setHeaderText(null);
-                alert.setContentText("Semua field harus diisi!");
-                alert.showAndWait();
-            } 
-            
-            if (selectedItems.isEmpty()) {
-                new Alert(Alert.AlertType.WARNING, "Pilih barang terlebih dahulu").show();
-                return;
-            }
-            Peminjaman selected = selectedItems.get(0);
-            Pengembalian pengembalian = new Pengembalian();
-            pengembalian.setIdPeminjaman(selected.getIdPeminjaman());
-            pengembalian.setIdUser(user.getIdUser()); 
-            pengembalian.setIdBarang(selected.getIdBarang());
-            pengembalian.setLokasi(lokasiPengembalian.getText());
-            pengembalian.setJumlah(selected.getJumlah());
-            pengembalian.setTanggalKembali(new java.util.Date());
-            pengembalian.setStatus("selesai"); // 
-            boolean success = pengembalianDAO.insert(pengembalian);
-            
-             if (success) {
-                popup.close();
-                showSuccessPopup();
-                loadData();       
-                selectedItems.clear();
-            } else {
-                popup.hide();
-                javafx.application.Platform.runLater(() -> {
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException ex) {
-                        ex.printStackTrace();
-                    }
-                    showSuccessPopup();
-                });
-            }
-        });
+    if (lokasiPengembalian.getText().trim().isEmpty()) {
+        new Alert(Alert.AlertType.ERROR, "Lokasi pengembalian harus diisi!").showAndWait();
+        return;
+    }
+
+    if (selectedItems.isEmpty()) {
+        new Alert(Alert.AlertType.WARNING, "Pilih barang terlebih dahulu").showAndWait();
+        return;
+    }
+
+    Peminjaman selected = selectedItems.get(0);
+
+    boolean success = pengembalianDAO.ajukanPengembalian(
+        selected.getIdPeminjaman(),
+        lokasiPengembalian.getText().trim()
+    );
+
+    if (success) {
+        popup.close();
+        showSuccessPopup();
+        loadData();
+        selectedItems.clear();
+    } else {
+        popup.close();
+        new Alert(Alert.AlertType.ERROR, "Gagal ajukan pengembalian! Cek status atau data.").showAndWait();
+    }
+});
+
 
         container.getChildren().addAll(header, title, fields, submitBtn);
 

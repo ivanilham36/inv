@@ -1,3 +1,4 @@
+
 package com.mycompany.inventaris.model;
 
 import java.sql.Date;

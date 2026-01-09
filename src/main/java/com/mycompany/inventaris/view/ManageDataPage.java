@@ -546,7 +546,7 @@ public class ManageDataPage extends BorderPane {
         Label dariLabel = new Label("Dari Lokasi");
         dariLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: bold;");
         ComboBox<String> dariLokasiCombo = new ComboBox<>();
-        dariLokasiCombo.getItems().addAll("Gudang", "Lab SI", "Lab TI", "Lab Umum", "Ruang 105", "Ruang 106", "Ruang 201", "Rusak");
+        dariLokasiCombo.getItems().addAll("Gudang", "Lab SI", "Lab TI", "Lab Umum", "Ruang 105", "Ruang 106", "Ruang 201", "Ruang C302", "Ruang 108");
         dariLokasiCombo.setPromptText("Pilih lokasi");
         dariLokasiCombo.setMaxWidth(Double.MAX_VALUE);
         dariLokasiCombo.setStyle(
@@ -556,6 +556,7 @@ public class ManageDataPage extends BorderPane {
             "-fx-background-radius: 6; " +
             "-fx-padding: 8 10;"
         );
+        
         dariLokasiBox.getChildren().addAll(dariLabel, dariLokasiCombo);
 
         // Ke Lokasi
@@ -563,7 +564,7 @@ public class ManageDataPage extends BorderPane {
         Label keLabel = new Label("Ke Lokasi");
         keLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: bold;");
         ComboBox<String> keLokasiCombo = new ComboBox<>();
-        keLokasiCombo.getItems().addAll("Gudang", "Lab SI", "Lab TI", "Lab Umum", "Ruang 105", "Ruang 106", "Ruang 201");
+        keLokasiCombo.getItems().addAll("Gudang", "Lab SI", "Lab TI", "Lab Umum", "Ruang 105", "Ruang 106", "Ruang 201", "Ruang C302", "Ruang 108");
         keLokasiCombo.setPromptText("Pilih lokasi");
         keLokasiCombo.setMaxWidth(Double.MAX_VALUE);
         keLokasiCombo.setStyle(
@@ -675,12 +676,22 @@ public class ManageDataPage extends BorderPane {
 
         detailTable.getColumns().addAll(lokasiCol, idBarangCol, namaBarangCol, qtyCol);
 
-        // Dummy data untuk table
-        detailTable.getItems().addAll(
-            new DetailBarang("Gudang", "NC003", "Computer", "5"),
-            new DetailBarang("Gudang", "NC003", "Spidol", "77"),
-            new DetailBarang("Gudang", "NC003", "Penghapus Papan Tulis", "23")
-        );
+        detailTable.getItems().clear();
+        dariLokasiCombo.setOnAction(e -> {
+            detailTable.getItems().clear();
+            barangField.clear();
+            qtyValue.setText("0");
+
+            String lokasi = dariLokasiCombo.getValue();
+            if (lokasi == null) return;
+
+            List<DetailBarang> barangList =
+                    BarangDAO.getBarangByLokasi(lokasi);
+
+            detailTable.getItems().addAll(barangList);
+        });
+
+
 
         formBox.getChildren().addAll(dariLokasiBox, keLokasiBox, barangBox, qtyBox, detailTable);
 

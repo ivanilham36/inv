@@ -23,6 +23,8 @@ import com.mycompany.inventaris.dao.AuditTrailDAO;
 import java.net.InetAddress;
 import com.mycompany.inventaris.dao.LoginDAO;
 import com.mycompany.inventaris.model.User;
+import com.mycompany.inventaris.service.SessionManager;
+
 
 public class LoginPage extends StackPane {
 
@@ -249,76 +251,119 @@ public class LoginPage extends StackPane {
             }
         });
     }
+    
+    private String getIpAddress() {
+        try {
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "UNKNOWN";
+        }
+    }
+
 
     private void handleLogin(String user, String pw) {
+        if (user == null) user = "";
+        if (pw == null) pw = "";
+
+        user = user.trim();
+
         if (user.isEmpty() || pw.isEmpty()) {
             show("Login Gagal", "Username dan password harus diisi!");
             return;
         }
 
+        // ambil IP
+        String ip = getIpAddress();
+
+        // autentikasi
         User u = LoginDAO.login(user, pw);
 
-String ip = "UNKNOWN";
-try {
-    ip = InetAddress.getLocalHost().getHostAddress();
-} catch (Exception e) {
-    e.printStackTrace();
-}
+        // ====== LOGIN GAGAL ======
+        if (u == null) {
 
-if (u == null) {
+            // cek apakah username ada
+            User existingUser = LoginDAO.findByUsername(user);
 
-    // check if username exists
-    User existingUser = LoginDAO.findByUsername(user);
+            if (existingUser != null) {
+                // username ada → password salah
+                AuditTrailDAO.log(
+                        existingUser.getIdUser(),
+                        existingUser.getUsername(),
+                        "LOGIN",
+                        "Login gagal (password salah)",
+                        ip,
+                        "GAGAL"
+                );
+            } else {
+                // username tidak ada
+                AuditTrailDAO.log(
+                        0,
+                        user,
+                        "LOGIN",
+                        "Login gagal (username tidak ditemukan)",
+                        ip,
+                        "GAGAL"
+                );
+            }
 
-    if (existingUser != null) {
-        // username exists → wrong password
+            show("Login Gagal", "Username atau password salah!");
+            return;
+        }
+
+        // ====== LOGIN BERHASIL ======
         AuditTrailDAO.log(
-                existingUser.getIdUser(),
-                existingUser.getUsername(),
+                u.getIdUser(),
+                u.getUsername(),
                 "LOGIN",
-                "Login gagal (password salah)",
+                "Login berhasil (role=" + u.getRole() + ")",
                 ip,
-                "GAGAL"
+                "BERHASIL"
         );
-    }
 
-    show("Login Gagal", "Username atau password salah!");
-    return;
-}
+        SessionManager.set(u, ip);
 
+        if (rememberMe.isSelected()) {
+            prefs.put("remember_username", user);
+            prefs.putBoolean("remember_checked", true);
+        } else {
+            prefs.remove("remember_username");
+            prefs.putBoolean("remember_checked", false);
+        }
 
-AuditTrailDAO.log(
-        u.getIdUser(),
-        u.getUsername(),
-        "LOGIN",
-        "Login berhasil",
-        ip,
-        "BERHASIL"
-);
-
-
+        // ====== PINDAH HALAMAN ======
         Scene scene;
-        switch (u.getRole().toLowerCase()){
+        switch (u.getRole().toLowerCase()) {
             case "mahasiswa":
             case "dosen":
             case "karyawan":
                 scene = new Scene(new UserPage(u), 1280, 720);
                 break;
-                
+
             case "admin":
                 scene = new Scene(new AdminPage(u), 1280, 720);
                 break;
-                
+
             case "superadmin":
                 scene = new Scene(new SuperAdminPage(u), 1280, 720);
                 break;
-                
+
             default:
+                AuditTrailDAO.log(
+                        u.getIdUser(),
+                        u.getUsername(),
+                        "LOGIN",
+                        "Login gagal: role tidak dikenali (" + u.getRole() + ")",
+                        ip,
+                        "GAGAL"
+                );
                 show("Error", "Role Tidak Dikenali !!");
                 return;
         }
+
         stage.setScene(scene);
     }
+
 
     private void show(String title, String msg) {
         Alert a = new Alert(Alert.AlertType.ERROR);

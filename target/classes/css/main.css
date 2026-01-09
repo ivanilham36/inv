@@ -1,0 +1,10 @@
+/* ========== GLOBAL ========== */
+@font-face {
+    -fx-font-family: "Poppins";
+    src: url("/fonts/Poppins-Regular.ttf");
+}
+
+.root {
+    -fx-background-color: #f8fafc;
+    -fx-font-family: Poppins;
+}

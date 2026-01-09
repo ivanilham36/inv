@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.mycompany.inventaris.dao;
 
 import com.mycompany.inventaris.Koneksi;
@@ -10,65 +6,66 @@ import com.mycompany.inventaris.model.Riwayat;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+
 public class RiwayatDAO {
-    private Connection conn;
-    
-    public RiwayatDAO() {
-        conn = Koneksi.getKoneksi();
-    }
-    
-    public List<Riwayat> getByUser(int id_user){
-        List<Riwayat> list = new ArrayList();
-        String sql = "SELECT 'Peminjaman' AS type, " +
-        "b.nama_barang, " +
-        "b.kode_barang, " +
-        "p.jumlah, " +
-        "p.tanggal_peminjaman AS tanggal_pengajuan, " +
-        "p.tanggal_kembali AS tanggal_pengembalian, " +
-        "p.status " +
-        "FROM peminjaman p " +
-        "JOIN barang b ON p.id_barang = b.id_barang " +
-        "WHERE p.id_user = ? AND p.status IN ('dikembalikan') " +
 
-        "UNION ALL " +
+    public List<Riwayat> getByUser(int id_user) {
+        List<Riwayat> list = new ArrayList<>();
 
-        "SELECT 'Permintaan' AS type, " +
-        "b.nama_barang, " +
-        "b.kode_barang, " +
-        "r.jumlah, " +
-        "r.tanggal AS tanggal_pengajuan, " +
-        "NULL AS tanggal_pengembalian, " +
-        "r.status " +
-        "FROM permintaan r " +
-        "JOIN barang b ON r.id_barang = b.id_barang " +
-        "WHERE r.id_user = ? AND r.status IN ('approved', 'rejected') " +
+        String sql =
+            "SELECT 'Peminjaman' AS type, " +
+            "b.nama_barang, " +
+            "b.kode_barang, " +
+            "p.jumlah, " +
+            "p.tanggal_peminjaman AS tanggal_pengajuan, " +
+            "p.tanggal_kembali AS tanggal_pengembalian, " +
+            "p.status " +
+            "FROM peminjaman p " +
+            "JOIN barang b ON p.id_barang = b.id_barang " +
+            "WHERE p.id_user = ? AND p.status IN ('dikembalikan') " +
 
-        "ORDER BY tanggal_pengajuan DESC";
+            "UNION ALL " +
 
+            "SELECT 'Permintaan' AS type, " +
+            "b.nama_barang, " +
+            "b.kode_barang, " +
+            "r.jumlah, " +
+            "r.tanggal AS tanggal_pengajuan, " +
+            "NULL AS tanggal_pengembalian, " +
+            "r.status " +
+            "FROM permintaan r " +
+            "JOIN barang b ON r.id_barang = b.id_barang " +
+            "WHERE r.id_user = ? AND r.status IN ('approved', 'rejected') " +
 
-        try{
-            PreparedStatement ps = conn.prepareStatement(sql);
+            "ORDER BY tanggal_pengajuan DESC";
+
+        try (Connection conn = Koneksi.getKoneksi();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
             ps.setInt(1, id_user);
             ps.setInt(2, id_user);
-            
-            ResultSet rs = ps.executeQuery();
-            while(rs.next()){
-                list.add(new Riwayat(
-                   rs.getString("type"),
-                   rs.getString("nama_barang"),
-                   rs.getString("kode_barang"),
-                   rs.getInt("jumlah"),
-                   rs.getDate("tanggal_pengajuan"),
-                   rs.getDate("tanggal_pengembalian"),
-                   rs.getString("status")
-                ));
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new Riwayat(
+                        rs.getString("type"),
+                        rs.getString("nama_barang"),
+                        rs.getString("kode_barang"),
+                        rs.getInt("jumlah"),
+                        rs.getDate("tanggal_pengajuan"),
+                        rs.getDate("tanggal_pengembalian"),
+                        rs.getString("status")
+                    ));
+                }
             }
-        }catch(Exception e){
+
+        } catch (Exception e) {
             System.out.println("Get Riwayat Error: " + e.getMessage());
+            e.printStackTrace();
         }
+
         return list;
     }
 }
