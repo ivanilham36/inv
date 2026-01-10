@@ -11,6 +11,7 @@ com\mycompany\inventaris\view\PenggantianBarangPage.class
 com\mycompany\inventaris\dao\RiwayatDAO.class
 com\mycompany\inventaris\view\StatusPage$1.class
 com\mycompany\inventaris\model\DetailBarang.class
+com\mycompany\inventaris\view\ManageDataPage$DetailBarang.class
 com\mycompany\inventaris\view\AdminUserPage.class
 com\mycompany\inventaris\view\LaporanPeminjamanPage.class
 com\mycompany\inventaris\AppLauncher.class

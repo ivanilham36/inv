@@ -6,9 +6,7 @@ import com.mycompany.inventaris.model.LaporanPeminjamanDTO;
 import com.mycompany.inventaris.model.LaporanPenggunaanDTO;
 import com.mycompany.inventaris.model.PeminjamanChoice;
 import com.mycompany.inventaris.model.VerifikasiDTO;
-import com.mycompany.inventaris.dao.AuditTrailDAO;
 import com.mycompany.inventaris.service.SessionManager;
-
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -83,7 +81,6 @@ public class PeminjamanDAO {
             return false;
         }
     }
-
 
     // =========================
     // LAPORAN PEMINJAMAN (ADMIN)
@@ -295,10 +292,15 @@ public class PeminjamanDAO {
     // VERIFIKASI SETUJU (ADMIN)
     // =========================
     public boolean verifikasiSetuju(int idPeminjaman) {
+
         String cek = """
-            SELECT p.id_barang, p.jumlah, b.stok
+            SELECT 
+                p.id_barang, p.jumlah, p.lokasi,
+                u.name AS nama_user,
+                b.stok, b.kode_barang
             FROM peminjaman p
             JOIN barang b ON b.id_barang = p.id_barang
+            JOIN user u ON u.id_user = p.id_user
             WHERE p.id_peminjaman = ?
             FOR UPDATE
         """;
@@ -310,18 +312,32 @@ public class PeminjamanDAO {
               AND status = 'pending'
         """;
 
+        // stok berkurang (tetap)
         String updateStok = """
             UPDATE barang
             SET stok = stok - ?
             WHERE id_barang = ?
         """;
 
-        try (Connection conn = Koneksi.getKoneksi()) {
+        // CATAT barang_keluar
+        // NOTE: kolom tujuan boleh disesuaikan kalau field kamu beda
+        String insertBarangKeluar = """
+            INSERT INTO barang_keluar (id_barang, tanggal_keluar, jumlah, lokasi, tujuan, id_user)
+            VALUES (?, NOW(), ?, ?, ?, ?)
+        """;
+
+        Connection conn = null;
+
+        try {
+            conn = Koneksi.getKoneksi();
             conn.setAutoCommit(false);
 
             int idBarang;
             int jumlah;
             int stok;
+            String lokasi;
+            String kodeBarang;
+            String namaPeminjam;
 
             // 1) cek stok + lock row
             try (PreparedStatement ps = conn.prepareStatement(cek)) {
@@ -338,12 +354,19 @@ public class PeminjamanDAO {
                             SessionManager.getIp(),
                             "GAGAL"
                         );
-
                         return false;
                     }
+
                     idBarang = rs.getInt("id_barang");
                     jumlah = rs.getInt("jumlah");
                     stok = rs.getInt("stok");
+
+                    lokasi = rs.getString("lokasi");
+                    if (lokasi == null || lokasi.trim().isEmpty()) lokasi = "-";
+
+                    kodeBarang = rs.getString("kode_barang");
+                    namaPeminjam = rs.getString("nama_user");
+                    if (namaPeminjam == null || namaPeminjam.trim().isEmpty()) namaPeminjam = "-";
                 }
             }
 
@@ -359,11 +382,10 @@ public class PeminjamanDAO {
                     SessionManager.getIp(),
                     "GAGAL"
                 );
-
                 return false;
             }
 
-            // 2) update status (harus pending)
+            // 2) update status
             int updated;
             try (PreparedStatement ps1 = conn.prepareStatement(updateStatus)) {
                 ps1.setInt(1, idPeminjaman);
@@ -381,7 +403,6 @@ public class PeminjamanDAO {
                     SessionManager.getIp(),
                     "GAGAL"
                 );
-
                 return false;
             }
 
@@ -392,8 +413,19 @@ public class PeminjamanDAO {
                 ps2.executeUpdate();
             }
 
+            // 4) CATAT barang_keluar
+            String tujuan = "Dipinjam oleh " + namaPeminjam + " (kode=" + kodeBarang + ")";
+
+            try (PreparedStatement ps3 = conn.prepareStatement(insertBarangKeluar)) {
+                ps3.setInt(1, idBarang);
+                ps3.setInt(2, jumlah);
+                ps3.setString(3, lokasi);
+                ps3.setString(4, tujuan);
+                ps3.setInt(5, SessionManager.getUserId()); 
+                ps3.executeUpdate();
+            }
+
             conn.commit();
-            conn.setAutoCommit(true);
 
             AuditTrailDAO.log(
                 SessionManager.getUserId(),
@@ -401,7 +433,8 @@ public class PeminjamanDAO {
                 "VERIFIKASI_PINJAM_SETUJU",
                 "Setujui peminjaman id=" + idPeminjaman +
                     " | id_barang=" + idBarang +
-                    " | jumlah=" + jumlah,
+                    " | jumlah=" + jumlah +
+                    " | catat_barang_keluar=YA",
                 SessionManager.getIp(),
                 "BERHASIL"
             );
@@ -409,7 +442,7 @@ public class PeminjamanDAO {
             return true;
 
         } catch (Exception e) {
-            try {  } catch (Exception ignore) {}
+            try { if (conn != null) conn.rollback(); } catch (Exception ignore) {}
 
             AuditTrailDAO.log(
                 SessionManager.getUserId(),
@@ -423,9 +456,12 @@ public class PeminjamanDAO {
             System.out.println("Verifikasi Setuju Error: " + e.getMessage());
             e.printStackTrace();
             return false;
+
+        } finally {
+            try { if (conn != null) conn.setAutoCommit(true); } catch (Exception ignore) {}
+            try { if (conn != null) conn.close(); } catch (Exception ignore) {}
         }
     }
-
 
     // =========================
     // VERIFIKASI TOLAK (ADMIN)
