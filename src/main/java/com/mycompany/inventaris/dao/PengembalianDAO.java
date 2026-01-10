@@ -89,7 +89,6 @@ public class PengembalianDAO {
 
             if (lokasi == null || lokasi.trim().isEmpty()) lokasi = "-";
 
-        
             LocalDate todayWib = LocalDate.now(ZoneId.of("Asia/Jakarta"));
             int rows;
             try (PreparedStatement ps = conn.prepareStatement(insert)) {
@@ -188,14 +187,22 @@ public class PengembalianDAO {
 
     // =========================
     // SETUJUI (ADMIN)
+    // FIX: + CATAT barang_masuk saat pengembalian disetujui
     // =========================
     public boolean setujuiPengembalian(int idPengembalian) {
 
         // join ke peminjaman biar sekalian dapat tanggal_peminjaman
+        // + ambil lokasi pengembalian & kode barang untuk keterangan
         String cek = """
-            SELECT k.id_peminjaman, k.id_barang, k.jumlah, p.tanggal_peminjaman
+            SELECT 
+                k.id_peminjaman, k.id_barang, k.jumlah, k.lokasi,
+                p.tanggal_peminjaman,
+                b.kode_barang, b.nama_barang,
+                u.name AS nama_user
             FROM pengembalian k
             JOIN peminjaman p ON p.id_peminjaman = k.id_peminjaman
+            JOIN barang b ON b.id_barang = k.id_barang
+            JOIN user u ON u.id_user = k.id_user
             WHERE k.id_pengembalian = ?
               AND k.status = 'pending'
             FOR UPDATE
@@ -222,6 +229,13 @@ public class PengembalianDAO {
             WHERE id_barang = ?
         """;
 
+        // CATAT BARANG MASUK
+        // (kolom sesuai yang kamu pakai di BarangDAO.tambahBarangMasuk)
+        String insertBarangMasuk = """
+            INSERT INTO barang_masuk (id_barang, tanggal_masuk, jumlah, lokasi, keterangan, id_user)
+            VALUES (?, NOW(), ?, ?, ?, ?)
+        """;
+
         Connection conn = null;
 
         try {
@@ -230,6 +244,10 @@ public class PengembalianDAO {
 
             int idPeminjaman, idBarang, jumlah;
             LocalDate tglPinjam;
+            String lokasiKembali;
+            String kodeBarang;
+            String namaBarang;
+            String namaUser;
 
             // 1) lock & ambil data
             try (PreparedStatement ps = conn.prepareStatement(cek)) {
@@ -249,6 +267,13 @@ public class PengembalianDAO {
                     idPeminjaman = rs.getInt("id_peminjaman");
                     idBarang = rs.getInt("id_barang");
                     jumlah = rs.getInt("jumlah");
+
+                    lokasiKembali = rs.getString("lokasi");
+                    if (lokasiKembali == null || lokasiKembali.trim().isEmpty()) lokasiKembali = "-";
+
+                    kodeBarang = rs.getString("kode_barang");
+                    namaBarang = rs.getString("nama_barang");
+                    namaUser = rs.getString("nama_user");
 
                     Date dPinjam = rs.getDate("tanggal_peminjaman");
                     tglPinjam = (dPinjam == null) ? null : ((java.sql.Date) dPinjam).toLocalDate();
@@ -296,6 +321,21 @@ public class PengembalianDAO {
                 ps.executeUpdate();
             }
 
+            // 5) CATAT barang_masuk (pengembalian)
+            String ket = "Pengembalian dari " + (namaUser == null ? "-" : namaUser)
+                    + " | " + (namaBarang == null ? "-" : namaBarang)
+                    + " (" + (kodeBarang == null ? "-" : kodeBarang) + ")"
+                    + " | id_peminjaman=" + idPeminjaman;
+
+            try (PreparedStatement ps = conn.prepareStatement(insertBarangMasuk)) {
+                ps.setInt(1, idBarang);
+                ps.setInt(2, jumlah);
+                ps.setString(3, lokasiKembali);
+                ps.setString(4, ket);
+                ps.setInt(5, SessionManager.getUserId()); // admin yang approve
+                ps.executeUpdate();
+            }
+
             conn.commit();
 
             AuditTrailDAO.log(
@@ -305,7 +345,8 @@ public class PengembalianDAO {
                     ", id_peminjaman=" + idPeminjaman +
                     ", id_barang=" + idBarang +
                     ", jumlah=" + jumlah +
-                    ", tanggal_kembali=" + finalKembali,
+                    ", tanggal_kembali=" + finalKembali +
+                    ", catat_barang_masuk=YA",
                 SessionManager.getIp(), "BERHASIL"
             );
 
