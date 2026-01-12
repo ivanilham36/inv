@@ -23,7 +23,7 @@ public class AppLauncher extends Application {
             new Image(getClass().getResourceAsStream("/assets/logoAsa.png"))
         );
         stage.setTitle("Ngetes doang bjirr");
-        stage.setResizable(false);
+        stage.setResizable(true);
 
         MainPage root = new MainPage(stage);
 

@@ -708,22 +708,22 @@ private void updateKondisiChart(List<LaporanPenggunaanDTO> data) {
         }
 
      String kategoriUI = kategoriFilter.getValue();
-if (!"Semua Kategori".equals(kategoriUI)) {
+        if (!"Semua Kategori".equals(kategoriUI)) {
 
-    String kategoriDB;
-    if ("Consumable".equalsIgnoreCase(kategoriUI)) {
-        kategoriDB = "consumable";
-    } else if ("Non Consumable".equalsIgnoreCase(kategoriUI)) {
-        kategoriDB = "non_consumable";
-    } else {
-        kategoriDB = kategoriUI.toLowerCase();
-    }
+            String kategoriDB;
+            if ("Consumable".equalsIgnoreCase(kategoriUI)) {
+                kategoriDB = "consumable";
+            } else if ("Non Consumable".equalsIgnoreCase(kategoriUI)) {
+                kategoriDB = "non_consumable";
+            } else {
+                kategoriDB = kategoriUI.toLowerCase();
+            }
 
-    filteredData = filteredData.stream()
-        .filter(d -> d.getKategori() != null)
-        .filter(d -> d.getKategori().equalsIgnoreCase(kategoriDB))
-        .collect(Collectors.toList());
-}
+            filteredData = filteredData.stream()
+                .filter(d -> d.getKategori() != null)
+                .filter(d -> d.getKategori().equalsIgnoreCase(kategoriDB))
+                .collect(Collectors.toList());
+        }
 
 
 currentData = filteredData;

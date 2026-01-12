@@ -78,7 +78,7 @@ public class RiwayatPage extends BorderPane {
         topBar.setAlignment(Pos.CENTER_LEFT);
 
         ComboBox<String> kategoriBox = new ComboBox<>();
-        kategoriBox.getItems().addAll("Semua Kategori", "Dipinjam", "Dikembalikan");
+        kategoriBox.getItems().addAll("Semua Kategori", "Disetujui", "Dikembalikan");
         kategoriBox.setValue("Semua Kategori");
         kategoriBox.setStyle("-fx-font-size: 13px; -fx-padding: 6;");
 

@@ -4,17 +4,17 @@ import com.mycompany.inventaris.Koneksi;
 import com.mycompany.inventaris.service.SessionManager;
 import com.mycompany.inventaris.model.VerifikasiDTO;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class PengembalianDAO {
 
-    // =========================
-    // AJUKAN PENGEMBALIAN (USER)
-    // =========================
     public boolean ajukanPengembalian(int idPeminjaman, String lokasi) {
 
         String cek = """
@@ -36,6 +36,13 @@ public class PengembalianDAO {
             INSERT INTO pengembalian
             (id_peminjaman, id_user, id_barang, lokasi, jumlah, tanggal_kembali, status)
             VALUES (?, ?, ?, ?, ?, ?, 'pending')
+        """;
+
+        String updatePeminjaman = """
+            UPDATE peminjaman
+            SET status = 'pengembalian'
+            WHERE id_peminjaman = ?
+              AND status = 'dipinjam'
         """;
 
         Connection conn = null;
@@ -89,9 +96,9 @@ public class PengembalianDAO {
 
             if (lokasi == null || lokasi.trim().isEmpty()) lokasi = "-";
 
-        
             LocalDate todayWib = LocalDate.now(ZoneId.of("Asia/Jakarta"));
-            int rows;
+
+            int inserted;
             try (PreparedStatement ps = conn.prepareStatement(insert)) {
                 ps.setInt(1, idPeminjaman);
                 ps.setInt(2, idUser);
@@ -99,11 +106,30 @@ public class PengembalianDAO {
                 ps.setString(4, lokasi);
                 ps.setInt(5, jumlah);
                 ps.setDate(6, java.sql.Date.valueOf(todayWib));
-                rows = ps.executeUpdate();
+                inserted = ps.executeUpdate();
+            }
+
+            int updated;
+            try (PreparedStatement ps = conn.prepareStatement(updatePeminjaman)) {
+                ps.setInt(1, idPeminjaman);
+                updated = ps.executeUpdate();
+            }
+
+            if (inserted == 0 || updated == 0) {
+                conn.rollback();
+
+                AuditTrailDAO.log(
+                    SessionManager.getUserId(),
+                    SessionManager.getUsername(),
+                    "AJUKAN_PENGEMBALIAN",
+                    "Gagal: insert/update tidak berhasil (id_peminjaman=" + idPeminjaman + ")",
+                    SessionManager.getIp(),
+                    "GAGAL"
+                );
+                return false;
             }
 
             conn.commit();
-            boolean ok = rows > 0;
 
             AuditTrailDAO.log(
                 SessionManager.getUserId(),
@@ -114,10 +140,10 @@ public class PengembalianDAO {
                     ", jumlah=" + jumlah +
                     ", lokasi=" + lokasi,
                 SessionManager.getIp(),
-                ok ? "BERHASIL" : "GAGAL"
+                "BERHASIL"
             );
 
-            return ok;
+            return true;
 
         } catch (Exception e) {
             try { if (conn != null) conn.rollback(); } catch (Exception ignore) {}
@@ -135,13 +161,11 @@ public class PengembalianDAO {
             return false;
 
         } finally {
+            try { if (conn != null) conn.setAutoCommit(true); } catch (Exception ignore) {}
             try { if (conn != null) conn.close(); } catch (Exception ignore) {}
         }
     }
 
-    // =========================
-    // LIST PENDING (ADMIN)
-    // =========================
     public List<VerifikasiDTO> getMenungguPengembalian() {
         List<VerifikasiDTO> list = new ArrayList<>();
 
@@ -172,6 +196,7 @@ public class PengembalianDAO {
                     rs.getString("nama_user"),
                     rs.getDate("tanggal_pengajuan").toString(),
                     rs.getString("nama_kode_barang"),
+                    null,
                     rs.getInt("jumlah"),
                     rs.getString("ruang"),
                     rs.getString("status"),
@@ -186,16 +211,17 @@ public class PengembalianDAO {
         return list;
     }
 
-    // =========================
-    // SETUJUI (ADMIN)
-    // =========================
     public boolean setujuiPengembalian(int idPengembalian) {
-
-        // join ke peminjaman biar sekalian dapat tanggal_peminjaman
         String cek = """
-            SELECT k.id_peminjaman, k.id_barang, k.jumlah, p.tanggal_peminjaman
+            SELECT 
+                k.id_peminjaman, k.id_barang, k.jumlah, k.lokasi,
+                p.tanggal_peminjaman,
+                b.kode_barang, b.nama_barang,
+                u.name AS nama_user
             FROM pengembalian k
             JOIN peminjaman p ON p.id_peminjaman = k.id_peminjaman
+            JOIN barang b ON b.id_barang = k.id_barang
+            JOIN user u ON u.id_user = k.id_user
             WHERE k.id_pengembalian = ?
               AND k.status = 'pending'
             FOR UPDATE
@@ -213,13 +239,18 @@ public class PengembalianDAO {
             SET status = 'dikembalikan',
                 tanggal_kembali = ?
             WHERE id_peminjaman = ?
-              AND status = 'dipinjam'
+              AND status = 'pengembalian'
         """;
 
         String updStok = """
             UPDATE barang
             SET stok = stok + ?
             WHERE id_barang = ?
+        """;
+
+        String insertBarangMasuk = """
+            INSERT INTO barang_masuk (id_barang, tanggal_masuk, jumlah, lokasi, keterangan, id_user)
+            VALUES (?, NOW(), ?, ?, ?, ?)
         """;
 
         Connection conn = null;
@@ -230,45 +261,43 @@ public class PengembalianDAO {
 
             int idPeminjaman, idBarang, jumlah;
             LocalDate tglPinjam;
+            String lokasiKembali;
+            String kodeBarang;
+            String namaBarang;
+            String namaUser;
 
-            // 1) lock & ambil data
             try (PreparedStatement ps = conn.prepareStatement(cek)) {
                 ps.setInt(1, idPengembalian);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.next()) {
                         conn.rollback();
-
-                        AuditTrailDAO.log(
-                            SessionManager.getUserId(), SessionManager.getUsername(),
-                            "VERIFIKASI_KEMBALI_SETUJU",
-                            "Gagal: data pengembalian tidak ditemukan / bukan pending (id_pengembalian=" + idPengembalian + ")",
-                            SessionManager.getIp(), "GAGAL"
-                        );
                         return false;
                     }
                     idPeminjaman = rs.getInt("id_peminjaman");
                     idBarang = rs.getInt("id_barang");
                     jumlah = rs.getInt("jumlah");
 
+                    lokasiKembali = rs.getString("lokasi");
+                    if (lokasiKembali == null || lokasiKembali.trim().isEmpty()) lokasiKembali = "-";
+
+                    kodeBarang = rs.getString("kode_barang");
+                    namaBarang = rs.getString("nama_barang");
+                    namaUser = rs.getString("nama_user");
+
                     Date dPinjam = rs.getDate("tanggal_peminjaman");
                     tglPinjam = (dPinjam == null) ? null : ((java.sql.Date) dPinjam).toLocalDate();
                 }
             }
 
-            // 2) update pengembalian
             int a;
             try (PreparedStatement ps = conn.prepareStatement(updPengembalian)) {
                 ps.setInt(1, idPengembalian);
                 a = ps.executeUpdate();
             }
 
-            // 3) tanggal kembali
             LocalDate todayWib = LocalDate.now(ZoneId.of("Asia/Jakarta"));
             LocalDate finalKembali = todayWib;
-
-            if (tglPinjam != null && todayWib.isBefore(tglPinjam)) {
-                finalKembali = tglPinjam;
-            }
+            if (tglPinjam != null && todayWib.isBefore(tglPinjam)) finalKembali = tglPinjam;
 
             int b;
             try (PreparedStatement ps = conn.prepareStatement(updPeminjaman)) {
@@ -279,48 +308,34 @@ public class PengembalianDAO {
 
             if (a == 0 || b == 0) {
                 conn.rollback();
-
-                AuditTrailDAO.log(
-                    SessionManager.getUserId(), SessionManager.getUsername(),
-                    "VERIFIKASI_KEMBALI_SETUJU",
-                    "Gagal: update status tidak memenuhi syarat (id_pengembalian=" + idPengembalian + ", id_peminjaman=" + idPeminjaman + ")",
-                    SessionManager.getIp(), "GAGAL"
-                );
                 return false;
             }
 
-            // 4) stok +jumlah
             try (PreparedStatement ps = conn.prepareStatement(updStok)) {
                 ps.setInt(1, jumlah);
                 ps.setInt(2, idBarang);
                 ps.executeUpdate();
             }
 
+            String ket = "Pengembalian dari " + (namaUser == null ? "-" : namaUser)
+                    + " | " + (namaBarang == null ? "-" : namaBarang)
+                    + " (" + (kodeBarang == null ? "-" : kodeBarang) + ")"
+                    + " | id_peminjaman=" + idPeminjaman;
+
+            try (PreparedStatement ps = conn.prepareStatement(insertBarangMasuk)) {
+                ps.setInt(1, idBarang);
+                ps.setInt(2, jumlah);
+                ps.setString(3, lokasiKembali);
+                ps.setString(4, ket);
+                ps.setInt(5, SessionManager.getUserId());
+                ps.executeUpdate();
+            }
+
             conn.commit();
-
-            AuditTrailDAO.log(
-                SessionManager.getUserId(), SessionManager.getUsername(),
-                "VERIFIKASI_KEMBALI_SETUJU",
-                "Setujui pengembalian: id_pengembalian=" + idPengembalian +
-                    ", id_peminjaman=" + idPeminjaman +
-                    ", id_barang=" + idBarang +
-                    ", jumlah=" + jumlah +
-                    ", tanggal_kembali=" + finalKembali,
-                SessionManager.getIp(), "BERHASIL"
-            );
-
             return true;
 
         } catch (Exception e) {
             try { if (conn != null) conn.rollback(); } catch (Exception ignore) {}
-
-            AuditTrailDAO.log(
-                SessionManager.getUserId(), SessionManager.getUsername(),
-                "VERIFIKASI_KEMBALI_SETUJU",
-                "Error setujui pengembalian id_pengembalian=" + idPengembalian + " | " + e.getMessage(),
-                SessionManager.getIp(), "GAGAL"
-            );
-
             e.printStackTrace();
             return false;
 

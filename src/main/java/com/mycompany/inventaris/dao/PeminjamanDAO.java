@@ -6,9 +6,7 @@ import com.mycompany.inventaris.model.LaporanPeminjamanDTO;
 import com.mycompany.inventaris.model.LaporanPenggunaanDTO;
 import com.mycompany.inventaris.model.PeminjamanChoice;
 import com.mycompany.inventaris.model.VerifikasiDTO;
-import com.mycompany.inventaris.dao.AuditTrailDAO;
 import com.mycompany.inventaris.service.SessionManager;
-
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -84,28 +82,42 @@ public class PeminjamanDAO {
         }
     }
 
-
-    // =========================
-    // LAPORAN PEMINJAMAN (ADMIN)
-    // =========================
     public List<LaporanPeminjamanDTO> getLaporanPeminjaman() {
         List<LaporanPeminjamanDTO> list = new ArrayList<>();
 
         String sql = """
             SELECT 
-                p.id_peminjaman,
-                u.name AS nama_peminjam,
-                u.role,
-                b.nama_barang,
-                p.jumlah,
-                p.tanggal_peminjaman,
-                p.tanggal_kembali,
-                p.status AS status_verifikasi,
-                b.status AS status_barang
+                p.id_peminjaman AS id_peminjaman,
+                u.name          AS nama_peminjam,
+                u.role          AS role,
+                b.nama_barang   AS nama_barang,
+                p.jumlah        AS jumlah,
+                p.tanggal_peminjaman AS tanggal_peminjaman,
+                p.tanggal_kembali    AS tanggal_kembali,
+                p.status        AS status_verifikasi,
+                b.status        AS status_barang
             FROM peminjaman p
-            JOIN user u ON p.id_user = u.id_user
+            JOIN user u  ON p.id_user = u.id_user
             JOIN barang b ON p.id_barang = b.id_barang
-            ORDER BY p.tanggal_peminjaman DESC
+
+            UNION ALL
+
+            SELECT
+                r.id_permintaan AS id_peminjaman,
+                u.name          AS nama_peminjam,
+                u.role          AS role,
+                b.nama_barang   AS nama_barang,
+                r.jumlah        AS jumlah,
+                r.tanggal       AS tanggal_peminjaman,
+                NULL            AS tanggal_kembali,
+                r.status        AS status_verifikasi,
+                b.status        AS status_barang
+            FROM permintaan r
+            JOIN user u  ON r.id_user = u.id_user
+            JOIN barang b ON r.id_barang = b.id_barang
+            WHERE r.status = 'approved'
+
+            ORDER BY tanggal_peminjaman DESC
         """;
 
         try (Connection conn = Koneksi.getKoneksi();
@@ -134,6 +146,7 @@ public class PeminjamanDAO {
         return list;
     }
 
+
     // =========================
     // LAPORAN PENGGUNAAN
     // =========================
@@ -155,12 +168,30 @@ public class PeminjamanDAO {
                     ELSE
                         DATEDIFF(p.tanggal_kembali, p.tanggal_peminjaman)
                 END AS durasi_hari,
-                b.kondisi AS kondisi,
+                b.kondisi,
                 b.deskripsi
             FROM peminjaman p
             JOIN barang b ON p.id_barang = b.id_barang
             JOIN user u ON p.id_user = u.id_user
-            ORDER BY p.tanggal_peminjaman DESC
+            
+            UNION ALL
+            
+            SELECT
+                r.id_permintaan AS id_penggunaan,
+                b.nama_barang,
+                b.kategori,
+                u.name AS nama_pengguna,
+                u.role,
+                r.tanggal AS tanggal_peminjaman,
+                NULL AS tanggal_kembali,
+                0 AS durasi_hari,
+                b.kondisi,
+                b.deskripsi
+            FROM permintaan r
+            JOIN barang b ON r.id_barang = b.id_barang
+            JOIN user u ON r.id_user = u.id_user
+            
+            ORDER BY tanggal_peminjaman DESC;
         """;
 
         try (Connection conn = Koneksi.getKoneksi();
@@ -255,6 +286,7 @@ public class PeminjamanDAO {
                 u.name AS nama_user,
                 p.tanggal_peminjaman,
                 CONCAT(b.nama_barang, ' (', b.kode_barang, ')') AS nama_kode_barang,
+                b.kondisi AS kondisi_barang,
                 p.jumlah,
                 IFNULL(NULLIF(p.lokasi,''), '-') AS ruang,
                 p.status,
@@ -266,6 +298,7 @@ public class PeminjamanDAO {
             ORDER BY p.tanggal_peminjaman DESC
         """;
 
+
         try (Connection conn = Koneksi.getKoneksi();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -276,6 +309,7 @@ public class PeminjamanDAO {
                     rs.getString("nama_user"),
                     rs.getDate("tanggal_peminjaman").toString(),
                     rs.getString("nama_kode_barang"),
+                    rs.getString("kondisi_barang"),
                     rs.getInt("jumlah"),
                     rs.getString("ruang"),
                     rs.getString("status"),
@@ -295,10 +329,15 @@ public class PeminjamanDAO {
     // VERIFIKASI SETUJU (ADMIN)
     // =========================
     public boolean verifikasiSetuju(int idPeminjaman) {
+
         String cek = """
-            SELECT p.id_barang, p.jumlah, b.stok
+            SELECT 
+                p.id_barang, p.jumlah, p.lokasi,
+                u.name AS nama_user,
+                b.stok, b.kode_barang
             FROM peminjaman p
             JOIN barang b ON b.id_barang = p.id_barang
+            JOIN user u ON u.id_user = p.id_user
             WHERE p.id_peminjaman = ?
             FOR UPDATE
         """;
@@ -310,18 +349,32 @@ public class PeminjamanDAO {
               AND status = 'pending'
         """;
 
+        // stok berkurang (tetap)
         String updateStok = """
             UPDATE barang
             SET stok = stok - ?
             WHERE id_barang = ?
         """;
 
-        try (Connection conn = Koneksi.getKoneksi()) {
+        // CATAT barang_keluar
+        // NOTE: kolom tujuan boleh disesuaikan kalau field kamu beda
+        String insertBarangKeluar = """
+            INSERT INTO barang_keluar (id_barang, tanggal_keluar, jumlah, lokasi, tujuan, id_user)
+            VALUES (?, NOW(), ?, ?, ?, ?)
+        """;
+
+        Connection conn = null;
+
+        try {
+            conn = Koneksi.getKoneksi();
             conn.setAutoCommit(false);
 
             int idBarang;
             int jumlah;
             int stok;
+            String lokasi;
+            String kodeBarang;
+            String namaPeminjam;
 
             // 1) cek stok + lock row
             try (PreparedStatement ps = conn.prepareStatement(cek)) {
@@ -338,12 +391,19 @@ public class PeminjamanDAO {
                             SessionManager.getIp(),
                             "GAGAL"
                         );
-
                         return false;
                     }
+
                     idBarang = rs.getInt("id_barang");
                     jumlah = rs.getInt("jumlah");
                     stok = rs.getInt("stok");
+
+                    lokasi = rs.getString("lokasi");
+                    if (lokasi == null || lokasi.trim().isEmpty()) lokasi = "-";
+
+                    kodeBarang = rs.getString("kode_barang");
+                    namaPeminjam = rs.getString("nama_user");
+                    if (namaPeminjam == null || namaPeminjam.trim().isEmpty()) namaPeminjam = "-";
                 }
             }
 
@@ -359,11 +419,10 @@ public class PeminjamanDAO {
                     SessionManager.getIp(),
                     "GAGAL"
                 );
-
                 return false;
             }
 
-            // 2) update status (harus pending)
+            // 2) update status
             int updated;
             try (PreparedStatement ps1 = conn.prepareStatement(updateStatus)) {
                 ps1.setInt(1, idPeminjaman);
@@ -381,7 +440,6 @@ public class PeminjamanDAO {
                     SessionManager.getIp(),
                     "GAGAL"
                 );
-
                 return false;
             }
 
@@ -392,8 +450,19 @@ public class PeminjamanDAO {
                 ps2.executeUpdate();
             }
 
+            // 4) CATAT barang_keluar
+            String tujuan = "Dipinjam oleh " + namaPeminjam + " (kode=" + kodeBarang + ")";
+
+            try (PreparedStatement ps3 = conn.prepareStatement(insertBarangKeluar)) {
+                ps3.setInt(1, idBarang);
+                ps3.setInt(2, jumlah);
+                ps3.setString(3, lokasi);
+                ps3.setString(4, tujuan);
+                ps3.setInt(5, SessionManager.getUserId()); 
+                ps3.executeUpdate();
+            }
+
             conn.commit();
-            conn.setAutoCommit(true);
 
             AuditTrailDAO.log(
                 SessionManager.getUserId(),
@@ -401,7 +470,8 @@ public class PeminjamanDAO {
                 "VERIFIKASI_PINJAM_SETUJU",
                 "Setujui peminjaman id=" + idPeminjaman +
                     " | id_barang=" + idBarang +
-                    " | jumlah=" + jumlah,
+                    " | jumlah=" + jumlah +
+                    " | catat_barang_keluar=YA",
                 SessionManager.getIp(),
                 "BERHASIL"
             );
@@ -409,7 +479,7 @@ public class PeminjamanDAO {
             return true;
 
         } catch (Exception e) {
-            try {  } catch (Exception ignore) {}
+            try { if (conn != null) conn.rollback(); } catch (Exception ignore) {}
 
             AuditTrailDAO.log(
                 SessionManager.getUserId(),
@@ -423,9 +493,12 @@ public class PeminjamanDAO {
             System.out.println("Verifikasi Setuju Error: " + e.getMessage());
             e.printStackTrace();
             return false;
+
+        } finally {
+            try { if (conn != null) conn.setAutoCommit(true); } catch (Exception ignore) {}
+            try { if (conn != null) conn.close(); } catch (Exception ignore) {}
         }
     }
-
 
     // =========================
     // VERIFIKASI TOLAK (ADMIN)
@@ -514,4 +587,18 @@ public class PeminjamanDAO {
 
         return list;
     }
+    
+    public static boolean updateStatusById(int idPeminjaman, String status) {
+        String sql = "UPDATE peminjaman SET status = ? WHERE id_peminjaman = ?";
+        try (Connection c = Koneksi.getKoneksi();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, status);
+            ps.setInt(2, idPeminjaman);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
 }
