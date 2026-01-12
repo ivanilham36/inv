@@ -1,3 +1,4 @@
+// Verifikasi Page
 package com.mycompany.inventaris.view;
 
 import com.mycompany.inventaris.model.User;
@@ -7,16 +8,24 @@ import com.mycompany.inventaris.dao.PengembalianDAO;
 import com.mycompany.inventaris.dao.ReplacementDAO;
 import com.mycompany.inventaris.model.VerifikasiDTO;
 
+import com.mycompany.inventaris.Koneksi;
+import com.mycompany.inventaris.model.Replacement;
+import java.io.File;
+
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +38,6 @@ public class VerifikasiPage extends BorderPane {
     private final PeminjamanDAO peminjamanDAO = new PeminjamanDAO();
     private final ReplacementDAO replacementDAO = new ReplacementDAO();
     private final PengembalianDAO pengembalianDAO = new PengembalianDAO();
-
 
     private User admin;
 
@@ -211,6 +219,13 @@ public class VerifikasiPage extends BorderPane {
     }
 
     private void handleApprove(VerifikasiDTO v) {
+
+        // ✅ KHUSUS REPLACEMENT: minta keputusan + catatan admin dulu
+        if ("Replacement".equals(modeAktif)) {
+            showApproveReplacementPopup(v);
+            return;
+        }
+
         String teks = switch (modeAktif) {
             case "Pengembalian" -> "menyetujui pengembalian dari ";
             case "Replacement" -> "menyetujui replacement dari ";
@@ -228,7 +243,6 @@ public class VerifikasiPage extends BorderPane {
                 if ("Pengembalian".equals(modeAktif)) {
                     success = pengembalianDAO.setujuiPengembalian(v.getIdPeminjaman());
                 } else if ("Replacement".equals(modeAktif)) {
-                    // idReplacement kita taruh di idPeminjaman DTO
                     success = replacementDAO.setujuiReplacement(v.getIdPeminjaman());
                 } else {
                     success = peminjamanDAO.verifikasiSetuju(v.getIdPeminjaman());
@@ -245,6 +259,13 @@ public class VerifikasiPage extends BorderPane {
     }
 
     private void handleReject(VerifikasiDTO v) {
+
+        // ✅ KHUSUS REPLACEMENT: minta catatan admin dulu
+        if ("Replacement".equals(modeAktif)) {
+            showRejectReplacementPopup(v);
+            return;
+        }
+
         String teks = switch (modeAktif) {
             case "Pengembalian" -> "menolak pengembalian dari ";
             case "Replacement" -> "menolak replacement dari ";
@@ -281,33 +302,253 @@ public class VerifikasiPage extends BorderPane {
         table.getItems().clear();
 
         if ("Pengembalian".equals(modeAktif)) {
-            allData = pengembalianDAO.getMenungguPengembalian(); 
+            allData = pengembalianDAO.getMenungguPengembalian();
         } else if ("Replacement".equals(modeAktif)) {
-            allData = replacementDAO.getMenungguReplacement(); 
+            allData = replacementDAO.getMenungguReplacement();
         } else {
             allData = peminjamanDAO.getMenungguVerifikasi();
         }
 
         table.getItems().addAll(allData);
     }
+    
+    private String formatKondisi(String db){
+        if(db == null) return "-";
+        return switch (db.toLowerCase()){
+            case "rusak ringan" -> "Rusak Ringan";
+            case "rusak berat" -> "Rusak Berat";
+            case "hilang" -> "Hilang";
+            default -> db;
+        };
+    }
 
     private void showDetailPopup(VerifikasiDTO data) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Detail Permintaan");
-        alert.setHeaderText("Informasi Lengkap");
-        alert.setContentText(
+        if (!"Replacement".equals(modeAktif)) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Detail Permintaan");
+            alert.setHeaderText("Informasi Lengkap");
+            alert.setContentText(
+                "Nama: " + data.getNamaUser() + "\n" +
+                "Tanggal: " + data.getTanggal() + "\n" +
+                "Barang: " + data.getNamaKodeBarang() + "\n" +
+                "Jumlah: " + data.getJumlah() + "\n" +
+                "Ruang: " + (data.getRuang() == null ? "-" : data.getRuang()) + "\n" +
+                "Kondisi Barang: " + formatKondisi(data.getKondisiBarang())
+            );
+            alert.showAndWait();
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Detail Replacement");
+        dialog.setHeaderText("Informasi Lengkap + Foto Bukti");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK);
+
+        VBox box = new VBox(12);
+        box.setPadding(new Insets(10));
+
+        Label info = new Label(
             "Nama: " + data.getNamaUser() + "\n" +
             "Tanggal: " + data.getTanggal() + "\n" +
             "Barang: " + data.getNamaKodeBarang() + "\n" +
             "Jumlah: " + data.getJumlah() + "\n" +
-            "Ruang: " + (data.getRuang() == null ? "-" : data.getRuang())
+            "Ruang: " + (data.getRuang() == null ? "-" : data.getRuang()) + "\n" +
+            "Kondisi Barang: " + formatKondisi(data.getKondisiBarang())
         );
-        alert.showAndWait();
+        info.setWrapText(true);
+
+        box.getChildren().add(info);
+
+        Replacement detail = replacementDAO.getDetail(data.getIdPeminjaman()); 
+
+        Label fotoTitle = new Label("Foto Bukti:");
+        fotoTitle.setStyle("-fx-font-weight: bold;");
+
+        ImageView img = new ImageView();
+        img.setFitWidth(380);
+        img.setPreserveRatio(true);
+
+        if (detail == null || detail.getFotoBukti() == null || detail.getFotoBukti().trim().isEmpty()) {
+            box.getChildren().addAll(fotoTitle, new Label("Tidak ada foto bukti."));
+        } else {
+            String fotoPath = detail.getFotoBukti();
+
+            try {
+                File f = new File(fotoPath);
+
+                if (f.exists()) {
+                    img.setImage(new Image(f.toURI().toString()));
+                    box.getChildren().addAll(fotoTitle, img, new Label(fotoPath));
+                } else {
+                    img.setImage(new Image("file:" + fotoPath));
+                    box.getChildren().addAll(fotoTitle, img, new Label("Path: " + fotoPath));
+                }
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                box.getChildren().addAll(fotoTitle, new Label("Gagal memuat foto: " + fotoPath));
+            }
+        }
+
+        ScrollPane sp = new ScrollPane(box);
+        sp.setFitToWidth(true);
+        sp.setPrefViewportHeight(520);
+
+        dialog.getDialogPane().setContent(sp);
+        dialog.showAndWait();
     }
 
-    // =========================
-    // SIDEBAR (KODE KAMU — TIDAK DIUBAH)
-    // =========================
+
+    private void showApproveReplacementPopup(VerifikasiDTO v) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Setujui Replacement");
+        dialog.setHeaderText("Masukkan keputusan & catatan admin");
+
+        ButtonType okBtn = new ButtonType("Setujui", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(okBtn, ButtonType.CANCEL);
+
+        ComboBox<String> keputusanBox = new ComboBox<>();
+        keputusanBox.getItems().addAll("hilang", "rusak ringan", "rusak berat");
+        keputusanBox.setPromptText("Pilih keputusan admin");
+        keputusanBox.setMaxWidth(Double.MAX_VALUE);
+
+        TextArea catatanArea = new TextArea();
+        catatanArea.setPromptText("Catatan admin (wajib)");
+        catatanArea.setPrefRowCount(4);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(10));
+
+        grid.add(new Label("Keputusan Admin"), 0, 0);
+        grid.add(keputusanBox, 1, 0);
+        grid.add(new Label("Catatan Admin"), 0, 1);
+        grid.add(catatanArea, 1, 1);
+
+        dialog.getDialogPane().setContent(grid);
+
+        Node okNode = dialog.getDialogPane().lookupButton(okBtn);
+        okNode.setDisable(true);
+
+        Runnable validate = () -> {
+            boolean valid = keputusanBox.getValue() != null
+                    && catatanArea.getText() != null
+                    && !catatanArea.getText().trim().isEmpty();
+            okNode.setDisable(!valid);
+        };
+
+        keputusanBox.setOnAction(e -> validate.run());
+        catatanArea.textProperty().addListener((obs, o, n) -> validate.run());
+        validate.run();
+
+        dialog.showAndWait().ifPresent(res -> {
+            if (res == okBtn) {
+
+                // 1) approve dulu 
+                boolean success = replacementDAO.setujuiReplacement(v.getIdPeminjaman());
+
+                // 2) kalau sukses -> simpan keputusan & catatan admin ke DB
+                if (success) {
+                    boolean noteOk = updateAdminDecisionReplacement(
+                            v.getIdPeminjaman(),
+                            keputusanBox.getValue(),
+                            catatanArea.getText().trim()
+                    );
+
+                    if (!noteOk) {
+                        new Alert(Alert.AlertType.WARNING,
+                                "Replacement disetujui, tapi gagal simpan catatan/keputusan admin ke DB.\n" +
+                                "Cek kolom keputusan_admin & catatan_admin.").showAndWait();
+                    } else {
+                        new Alert(Alert.AlertType.INFORMATION, "Replacement disetujui!").showAndWait();
+                    }
+
+                    loadData();
+                } else {
+                    new Alert(Alert.AlertType.ERROR, "Gagal menyetujui replacement.").showAndWait();
+                }
+            }
+        });
+    }
+
+    private void showRejectReplacementPopup(VerifikasiDTO v) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Tolak Replacement");
+        dialog.setHeaderText("Masukkan catatan admin (alasan penolakan)");
+
+        ButtonType okBtn = new ButtonType("Tolak", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(okBtn, ButtonType.CANCEL);
+
+        TextArea catatanArea = new TextArea();
+        catatanArea.setPromptText("Catatan admin (wajib)");
+        catatanArea.setPrefRowCount(4);
+
+        VBox box = new VBox(10, new Label("Catatan Admin"), catatanArea);
+        box.setPadding(new Insets(10));
+        dialog.getDialogPane().setContent(box);
+
+        Node okNode = dialog.getDialogPane().lookupButton(okBtn);
+        okNode.setDisable(true);
+
+        catatanArea.textProperty().addListener((obs, o, n) -> {
+            okNode.setDisable(n == null || n.trim().isEmpty());
+        });
+
+        dialog.showAndWait().ifPresent(res -> {
+            if (res == okBtn) {
+
+                // 1) reject dulu 
+                boolean success = replacementDAO.tolakReplacement(v.getIdPeminjaman());
+
+                // 2) kalau sukses -> simpan catatan admin ke DB
+                if (success) {
+                    boolean noteOk = updateAdminDecisionReplacement(
+                            v.getIdPeminjaman(),
+                            null, // keputusan_admin boleh null saat ditolak
+                            catatanArea.getText().trim()
+                    );
+
+                    if (!noteOk) {
+                        new Alert(Alert.AlertType.WARNING,
+                                "Replacement ditolak, tapi gagal simpan catatan admin ke DB.\n" +
+                                "Cek kolom keputusan_admin & catatan_admin.").showAndWait();
+                    } else {
+                        new Alert(Alert.AlertType.INFORMATION, "Replacement ditolak!").showAndWait();
+                    }
+
+                    loadData();
+                } else {
+                    new Alert(Alert.AlertType.ERROR, "Gagal menolak replacement.").showAndWait();
+                }
+            }
+        });
+    }
+
+    private boolean updateAdminDecisionReplacement(int idReplacement, String keputusanAdmin, String catatanAdmin) {
+        String sql = """
+            UPDATE replacement
+            SET keputusan_admin = ?,
+                catatan_admin   = ?
+            WHERE id_replacement = ?
+        """;
+
+        try (Connection conn = Koneksi.getKoneksi();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, keputusanAdmin);
+            ps.setString(2, catatanAdmin);
+            ps.setInt(3, idReplacement);
+
+            return ps.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            System.out.println("Update Admin Decision Replacement Error: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     private VBox createSidebar() {
         VBox sidebar = new VBox(15);
         sidebar.setPadding(new Insets(20, 10, 20, 10));

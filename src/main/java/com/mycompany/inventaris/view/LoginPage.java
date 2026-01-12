@@ -286,7 +286,6 @@ public class LoginPage extends StackPane {
             User existingUser = LoginDAO.findByUsername(user);
 
             if (existingUser != null) {
-                // username ada → password salah
                 AuditTrailDAO.log(
                         existingUser.getIdUser(),
                         existingUser.getUsername(),
@@ -296,7 +295,6 @@ public class LoginPage extends StackPane {
                         "GAGAL"
                 );
             } else {
-                // username tidak ada
                 AuditTrailDAO.log(
                         0,
                         user,
@@ -311,6 +309,20 @@ public class LoginPage extends StackPane {
             return;
         }
 
+        // ====== CEK STATUS AKUN (WAJIB DI SINI) ======
+        if (u.getStatus() != null && !u.getStatus().equalsIgnoreCase("AKTIF")) {
+            AuditTrailDAO.log(
+                    u.getIdUser(),
+                    u.getUsername(),
+                    "LOGIN",
+                    "Login gagal (akun nonaktif)",
+                    ip,
+                    "GAGAL"
+            );
+            show("Login Gagal", "Akun anda tidak aktif, silahkan hubungi petugas");
+            return;
+        }
+
         // ====== LOGIN BERHASIL ======
         AuditTrailDAO.log(
                 u.getIdUser(),
@@ -320,6 +332,7 @@ public class LoginPage extends StackPane {
                 ip,
                 "BERHASIL"
         );
+
 
         SessionManager.set(u, ip);
 

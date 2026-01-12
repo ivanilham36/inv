@@ -599,7 +599,7 @@ public class PengembalianBarangPage extends BorderPane {
             currentStage.setScene(newScene);
         });
 
-        Button riwayatBtn = new Button("Lihat Riwayat");
+        Button riwayatBtn = new Button("Lihat Status");
         riwayatBtn.setStyle(
             "-fx-background-color: #dc2626; " +
             "-fx-text-fill: white; " +
@@ -612,7 +612,7 @@ public class PengembalianBarangPage extends BorderPane {
         riwayatBtn.setOnAction(e -> {
             popup.close();
             Stage currentStage = (Stage) this.getScene().getWindow();
-            Scene newScene = new Scene(new RiwayatPage(user), 1280, 720);
+            Scene newScene = new Scene(new StatusPage(user), 1280, 720);
             currentStage.setScene(newScene);
         });
 

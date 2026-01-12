@@ -15,7 +15,6 @@ public class StatusDAO {
         List<Riwayat> list = new ArrayList<>();
 
         String sql = """
-            -- STATUS PEMINJAMAN (proses)
             SELECT 
                 'Peminjaman' AS type,
                 b.nama_barang,
@@ -24,7 +23,7 @@ public class StatusDAO {
                 p.tanggal_peminjaman AS tanggal_pengajuan,
                 p.tanggal_kembali AS tanggal_pengembalian,
                 CASE
-                    WHEN p.status = 'pending' THEN 'Menunggu'
+                    WHEN p.status = 'pending' THEN 'Pending'
                     WHEN p.status = 'dipinjam' THEN 'Dipinjam'
                     WHEN p.status = 'pengembalian' THEN 'Pengembalian'
                     ELSE p.status
@@ -36,7 +35,6 @@ public class StatusDAO {
 
             UNION ALL
 
-            -- STATUS PERMINTAAN (proses)
             SELECT
                 'Permintaan' AS type,
                 b.nama_barang,
@@ -45,7 +43,7 @@ public class StatusDAO {
                 r.tanggal AS tanggal_pengajuan,
                 NULL AS tanggal_pengembalian,
                 CASE
-                    WHEN r.status = 'pending' THEN 'Menunggu'
+                    WHEN r.status = 'pending' THEN 'Pending'
                     WHEN r.status = 'diproses' THEN 'Diproses'
                     ELSE r.status
                 END AS status
@@ -56,7 +54,6 @@ public class StatusDAO {
 
             UNION ALL
 
-            -- STATUS REPLACEMENT (proses)
             SELECT
                 'Replacement' AS type,
                 b.nama_barang,
@@ -64,7 +61,7 @@ public class StatusDAO {
                 rp.jumlah,
                 rp.tanggal_pengajuan AS tanggal_pengajuan,
                 NULL AS tanggal_pengembalian,
-                'Menunggu' AS status
+                'Pending' AS status
             FROM replacement rp
             JOIN barang b ON rp.id_barang = b.id_barang
             WHERE rp.id_user = ?

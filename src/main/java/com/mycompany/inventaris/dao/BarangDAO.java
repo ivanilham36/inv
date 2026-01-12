@@ -4,18 +4,30 @@ import com.mycompany.inventaris.Koneksi;
 import com.mycompany.inventaris.model.Barang;
 import com.mycompany.inventaris.service.SessionManager;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
 public class BarangDAO {
 
     private static String safeUsername() {
-        try { return SessionManager.getUsername(); } catch (Exception e) { return "-"; }
+        try {
+            return SessionManager.getUsername();
+        } catch (Exception e) {
+            return "-";
+        }
     }
 
     private static String safeIp() {
-        try { return SessionManager.getIp(); } catch (Exception e) { return "UNKNOWN"; }
+        try {
+            return SessionManager.getIp();
+        } catch (Exception e) {
+            return "UNKNOWN";
+        }
     }
 
     private static String norm(String s) {
@@ -24,9 +36,6 @@ public class BarangDAO {
         return t.isEmpty() ? "-" : t;
     }
 
-    // =========================
-    // READ ALL
-    // =========================
     public static List<Barang> getAll() {
         List<Barang> list = new ArrayList<>();
         String sql = "SELECT * FROM barang ORDER BY id_barang DESC";
@@ -50,20 +59,16 @@ public class BarangDAO {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
         return list;
     }
 
-    // =========================
-    // CREATE BARANG
-    // =========================
     public static boolean insertBarang(Barang barang, String deskripsi) {
         String sql = """
             INSERT INTO barang
             (kode_barang, nama_barang, kategori, stok, kondisi, lokasi, deskripsi, `status`)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """;
-
-        boolean ok;
 
         String lok = norm(barang.getLokasi());
         String desc = norm(deskripsi);
@@ -80,7 +85,7 @@ public class BarangDAO {
             ps.setString(7, desc);
             ps.setString(8, barang.getStatus());
 
-            ok = ps.executeUpdate() > 0;
+            boolean ok = ps.executeUpdate() > 0;
 
             AuditTrailDAO.log(
                     SessionManager.getUserId(),
@@ -114,15 +119,12 @@ public class BarangDAO {
         }
     }
 
-    // =========================
-    // UPDATE
-    // =========================
-    public static boolean updateBarangByKode(String kodeBarang, String namaBarang, String lokasi, int stok) {
-        String sql = "UPDATE barang SET nama_barang = ?, lokasi = ?, stok = ? WHERE kode_barang = ?";
-
+    public static boolean updateBarangByKode(String kodeBarang, String namaBarang, String lokasi, int stok, String status, String kondisi) {
+        String sql = "UPDATE barang SET nama_barang = ?, lokasi = ?, stok = ?, status = ?, kondisi = ? WHERE kode_barang = ?";
         boolean ok;
-
         String lok = norm(lokasi);
+        String st = norm(status);
+        String kd = norm(kondisi);
 
         try (Connection conn = Koneksi.getKoneksi();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -130,7 +132,9 @@ public class BarangDAO {
             ps.setString(1, namaBarang);
             ps.setString(2, lok);
             ps.setInt(3, stok);
-            ps.setString(4, kodeBarang);
+            ps.setString(4, st);
+            ps.setString(5, kd);
+            ps.setString(6, kodeBarang);
 
             ok = ps.executeUpdate() > 0;
 
@@ -141,7 +145,9 @@ public class BarangDAO {
                     "Update barang: kode=" + kodeBarang
                             + ", nama=" + namaBarang
                             + ", lokasi=" + lok
-                            + ", stok=" + stok,
+                            + ", stok=" + stok
+                            + ", status=" + st
+                            + ", kondisi=" + kd,
                     safeIp(),
                     ok ? "BERHASIL" : "GAGAL"
             );
@@ -162,19 +168,16 @@ public class BarangDAO {
         }
     }
 
-    // =========================
-    // DELETE
-    // =========================
+
+
     public static boolean deleteBarangByKode(String kodeBarang) {
         String sql = "DELETE FROM barang WHERE kode_barang = ?";
-
-        boolean ok;
 
         try (Connection conn = Koneksi.getKoneksi();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, kodeBarang);
-            ok = ps.executeUpdate() > 0;
+            boolean ok = ps.executeUpdate() > 0;
 
             AuditTrailDAO.log(
                     SessionManager.getUserId(),
@@ -201,9 +204,6 @@ public class BarangDAO {
         }
     }
 
-    // =========================
-    // BARANG MASUK
-    // =========================
     public static boolean tambahBarangMasuk(String kodeBarang, int jumlah, String lokasi, String keterangan) {
         return tambahBarangMasuk(kodeBarang, jumlah, lokasi, keterangan, SessionManager.getUserId());
     }
@@ -212,7 +212,8 @@ public class BarangDAO {
         Integer idBarang = getIdBarangByKode(kodeBarang);
         if (idBarang == null) {
             AuditTrailDAO.log(
-                    idUser, safeUsername(),
+                    idUser,
+                    safeUsername(),
                     "BARANG_MASUK",
                     "Gagal: kode_barang tidak ditemukan (" + kodeBarang + ")",
                     safeIp(),
@@ -252,7 +253,8 @@ public class BarangDAO {
             conn.commit();
 
             AuditTrailDAO.log(
-                    idUser, safeUsername(),
+                    idUser,
+                    safeUsername(),
                     "BARANG_MASUK",
                     "Barang masuk: kode=" + kodeBarang
                             + ", id_barang=" + idBarang
@@ -267,7 +269,8 @@ public class BarangDAO {
 
         } catch (Exception e) {
             AuditTrailDAO.log(
-                    idUser, safeUsername(),
+                    idUser,
+                    safeUsername(),
                     "BARANG_MASUK",
                     "Error barang masuk: kode=" + kodeBarang
                             + ", id_barang=" + idBarang
@@ -281,9 +284,6 @@ public class BarangDAO {
         }
     }
 
-    // =========================
-    // BARANG KELUAR
-    // =========================
     public static boolean tambahBarangKeluar(String kodeBarang, int jumlah, String lokasi, String tujuan) {
         return tambahBarangKeluar(kodeBarang, jumlah, lokasi, tujuan, SessionManager.getUserId());
     }
@@ -292,7 +292,8 @@ public class BarangDAO {
         Integer idBarang = getIdBarangByKode(kodeBarang);
         if (idBarang == null) {
             AuditTrailDAO.log(
-                    idUser, safeUsername(),
+                    idUser,
+                    safeUsername(),
                     "BARANG_KELUAR",
                     "Gagal: kode_barang tidak ditemukan (" + kodeBarang + ")",
                     safeIp(),
@@ -325,7 +326,8 @@ public class BarangDAO {
                 conn.rollback();
 
                 AuditTrailDAO.log(
-                        idUser, safeUsername(),
+                        idUser,
+                        safeUsername(),
                         "BARANG_KELUAR",
                         "Gagal barang keluar (stok tidak cukup): kode=" + kodeBarang
                                 + ", id_barang=" + idBarang
@@ -350,7 +352,8 @@ public class BarangDAO {
             conn.commit();
 
             AuditTrailDAO.log(
-                    idUser, safeUsername(),
+                    idUser,
+                    safeUsername(),
                     "BARANG_KELUAR",
                     "Barang keluar: kode=" + kodeBarang
                             + ", id_barang=" + idBarang
@@ -365,7 +368,8 @@ public class BarangDAO {
 
         } catch (Exception e) {
             AuditTrailDAO.log(
-                    idUser, safeUsername(),
+                    idUser,
+                    safeUsername(),
                     "BARANG_KELUAR",
                     "Error barang keluar: kode=" + kodeBarang
                             + ", id_barang=" + idBarang
@@ -379,9 +383,6 @@ public class BarangDAO {
         }
     }
 
-    // =========================
-    // LIST LOKASI
-    // =========================
     public static List<String> getAllLokasi() {
         List<String> list = new ArrayList<>();
         String sql = """

@@ -6,8 +6,13 @@ import com.mycompany.inventaris.dao.PeminjamanDAO;
 import com.mycompany.inventaris.dao.ReplacementDAO;
 import com.mycompany.inventaris.model.PeminjamanChoice;
 import com.mycompany.inventaris.model.Replacement;
-
 import com.mycompany.inventaris.Koneksi;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
@@ -26,8 +31,13 @@ import javafx.stage.StageStyle;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import javafx.stage.FileChooser;
 
 public class PenggantianBarangPage extends BorderPane {
 
@@ -35,12 +45,41 @@ public class PenggantianBarangPage extends BorderPane {
     private List<BarangRusakData> masterData = new ArrayList<>();
     private User user;
 
+    // formatter tanggal (ubah format kalau mau)
+    private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+
+    // biar filter & search bisa dipanggil ulang setelah reload
+    private TextField searchField;
+    private ComboBox<String> statusBox;
+    private ComboBox<String> kondisiBox;
+
     public PenggantianBarangPage(User user) {
         this.user = user;
         initializeUI();
-        loadFromDatabase(); 
+        loadFromDatabase();
+        applyAllFilters(); // ✅ setelah data kebaca, apply filter default
     }
 
+    // =========================
+    // HELPER SIMPAN FOTO
+    // =========================
+    private String saveFotoToUploads(File file) throws Exception {
+        Path dir = Paths.get("uploads", "replacement");
+        Files.createDirectories(dir);
+
+        String safeName = System.currentTimeMillis() + "_" +
+                file.getName().replaceAll("\\s+", "_");
+
+        Path target = dir.resolve(safeName);
+        Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+
+        // simpan path relatif biar portable
+        return target.toString().replace("\\", "/");
+    }
+
+    // =========================
+    // LOAD DB
+    // =========================
     private void loadFromDatabase() {
         masterData.clear();
 
@@ -67,17 +106,23 @@ public class PenggantianBarangPage extends BorderPane {
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    String idLaporan = "RP-" + rs.getInt("id_replacement");
+
+                    int idReplacement = rs.getInt("id_replacement");
+
                     String namaBarang = rs.getString("nama_barang");
                     String kodeBarang = rs.getString("kode_barang");
                     String namaPeminjam = rs.getString("nama_user");
-                    String tanggal = String.valueOf(rs.getDate("tanggal_pengajuan"));
 
-                    String kondisiDb = rs.getString("kondisi_barang"); 
-                    String statusDb = rs.getString("status");          
+                    // ✅ FIX: DATETIME ambil pakai timestamp
+                    Timestamp ts = rs.getTimestamp("tanggal_pengajuan");
+                    String tanggal = formatTanggal(ts);
+
+                    String kondisiDb = rs.getString("kondisi_barang");
+                    String statusDb = rs.getString("status");
 
                     masterData.add(new BarangRusakData(
-                        idLaporan,
+                        idReplacement,
+                        "RP-" + idReplacement,
                         namaBarang,
                         kodeBarang,
                         namaPeminjam,
@@ -92,8 +137,12 @@ public class PenggantianBarangPage extends BorderPane {
             e.printStackTrace();
             new Alert(Alert.AlertType.ERROR, "Gagal mengambil data replacement dari database!").showAndWait();
         }
+    }
 
-        table.getItems().setAll(masterData);
+    private String formatTanggal(Timestamp ts) {
+        if (ts == null) return "-";
+        LocalDateTime ldt = ts.toLocalDateTime();
+        return DT_FMT.format(ldt);
     }
 
     private String toUiStatus(String db) {
@@ -119,6 +168,29 @@ public class PenggantianBarangPage extends BorderPane {
     }
 
     // =========================
+    // APPLY FILTER + SEARCH
+    // =========================
+    private void applyAllFilters() {
+        String keyword = (searchField.getText() == null) ? "" : searchField.getText().trim().toLowerCase();
+        String st = statusBox.getValue();
+        String kd = kondisiBox.getValue();
+
+        List<BarangRusakData> filtered = masterData.stream()
+            .filter(d -> {
+                if (keyword.isEmpty()) return true;
+                return d.getNamaBarang().toLowerCase().contains(keyword)
+                    || d.getKodeBarang().toLowerCase().contains(keyword)
+                    || d.getNamaPeminjam().toLowerCase().contains(keyword)
+                    || d.getIdLaporan().toLowerCase().contains(keyword);
+            })
+            .filter(d -> st.equals("Semua Status") || d.getStatus().equals(st))
+            .filter(d -> kd.equals("Semua Kondisi") || d.getKondisi().equals(kd))
+            .collect(Collectors.toList());
+
+        table.getItems().setAll(filtered);
+    }
+
+    // =========================
     // UI
     // =========================
     private void initializeUI() {
@@ -131,7 +203,7 @@ public class PenggantianBarangPage extends BorderPane {
         Label title = new Label("PENGGANTIAN BARANG RUSAK");
         title.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
 
-        TextField searchField = new TextField();
+        searchField = new TextField();
         searchField.setPromptText("🔍  Pencarian");
         searchField.setPrefWidth(400);
         searchField.setStyle(
@@ -145,12 +217,12 @@ public class PenggantianBarangPage extends BorderPane {
         HBox topBar = new HBox(15);
         topBar.setAlignment(Pos.CENTER_LEFT);
 
-        ComboBox<String> statusBox = new ComboBox<>();
+        statusBox = new ComboBox<>();
         statusBox.getItems().addAll("Semua Status", "Menunggu", "Disetujui", "Ditolak");
         statusBox.setValue("Semua Status");
         statusBox.setStyle("-fx-font-size: 13px; -fx-padding: 6;");
 
-        ComboBox<String> kondisiBox = new ComboBox<>();
+        kondisiBox = new ComboBox<>();
         kondisiBox.getItems().addAll("Semua Kondisi", "Hilang", "Rusak Berat", "Rusak Ringan");
         kondisiBox.setValue("Semua Kondisi");
         kondisiBox.setStyle("-fx-font-size: 13px; -fx-padding: 6;");
@@ -206,7 +278,7 @@ public class PenggantianBarangPage extends BorderPane {
         peminjamCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNamaPeminjam()));
 
         TableColumn<BarangRusakData, String> tanggalCol = new TableColumn<>("Tanggal Laporan");
-        tanggalCol.setMinWidth(130);
+        tanggalCol.setMinWidth(150);
         tanggalCol.setStyle("-fx-alignment: CENTER-LEFT;");
         tanggalCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTanggalLaporan()));
 
@@ -220,14 +292,9 @@ public class PenggantianBarangPage extends BorderPane {
                     setGraphic(null);
                 } else {
                     Label badge = new Label(kondisi);
-                    String color;
-                    if (kondisi.equals("Hilang")) {
-                        color = "#ef4444";
-                    } else if (kondisi.equals("Rusak Berat")) {
-                        color = "#f97316";
-                    } else {
-                        color = "#f59e0b";
-                    }
+                    String color = kondisi.equals("Hilang") ? "#ef4444"
+                                 : kondisi.equals("Rusak Berat") ? "#f97316"
+                                 : "#f59e0b";
                     badge.setStyle(
                         "-fx-background-color: " + color + "; " +
                         "-fx-text-fill: white; " +
@@ -254,14 +321,9 @@ public class PenggantianBarangPage extends BorderPane {
                     setGraphic(null);
                 } else {
                     Label badge = new Label(status);
-                    String color;
-                    if (status.equals("Menunggu")) {
-                        color = "#fbbf24";
-                    } else if (status.equals("Disetujui")) {
-                        color = "#22c55e";
-                    } else {
-                        color = "#dc2626";
-                    }
+                    String color = status.equals("Menunggu") ? "#fbbf24"
+                                 : status.equals("Disetujui") ? "#22c55e"
+                                 : "#dc2626";
                     badge.setStyle(
                         "-fx-background-color: " + color + "; " +
                         "-fx-text-fill: white; " +
@@ -280,7 +342,6 @@ public class PenggantianBarangPage extends BorderPane {
 
         table.getColumns().addAll(noCol, idCol, namaCol, kodeCol, peminjamCol, tanggalCol, kondisiCol, statusCol);
 
-        // Header styling
         this.sceneProperty().addListener((observable, oldScene, newScene) -> {
             if (newScene != null) {
                 javafx.application.Platform.runLater(() -> {
@@ -301,29 +362,9 @@ public class PenggantianBarangPage extends BorderPane {
             }
         });
 
-        // Search & filter pakai masterData (data DB yang sudah di-load)
-        Runnable applyAll = () -> {
-            String keyword = searchField.getText() == null ? "" : searchField.getText().trim().toLowerCase();
-            String st = statusBox.getValue();
-            String kd = kondisiBox.getValue();
-
-            List<BarangRusakData> filtered = masterData.stream()
-                .filter(d -> {
-                    if (keyword.isEmpty()) return true;
-                    return d.getNamaBarang().toLowerCase().contains(keyword)
-                        || d.getKodeBarang().toLowerCase().contains(keyword)
-                        || d.getNamaPeminjam().toLowerCase().contains(keyword);
-                })
-                .filter(d -> st.equals("Semua Status") || d.getStatus().equals(st))
-                .filter(d -> kd.equals("Semua Kondisi") || d.getKondisi().equals(kd))
-                .toList();
-
-            table.getItems().setAll(filtered);
-        };
-
-        searchField.textProperty().addListener((obs, old, n) -> applyAll.run());
-        statusBox.setOnAction(e -> applyAll.run());
-        kondisiBox.setOnAction(e -> applyAll.run());
+        searchField.textProperty().addListener((obs, old, n) -> applyAllFilters());
+        statusBox.setOnAction(e -> applyAllFilters());
+        kondisiBox.setOnAction(e -> applyAllFilters());
 
         mainContent.getChildren().addAll(title, searchField, topBar, table);
 
@@ -332,7 +373,7 @@ public class PenggantianBarangPage extends BorderPane {
     }
 
     // =========================
-    // FORM POPUP (SCROLLABLE)
+    // FORM POPUP
     // =========================
     private void showFormPopup() {
         Stage popup = new Stage();
@@ -375,20 +416,19 @@ public class PenggantianBarangPage extends BorderPane {
         VBox fields = new VBox(12);
         fields.setPadding(new Insets(5, 10, 5, 10));
 
-        // === SCROLLPANE (ini yang bikin bisa scroll) ===
         ScrollPane scrollPane = new ScrollPane(fields);
         scrollPane.setFitToWidth(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scrollPane.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
-        scrollPane.setPrefViewportHeight(380); // batas tinggi area form
+        scrollPane.setPrefViewportHeight(380);
 
         TextField namaPelapor = new TextField(user.getNama());
         namaPelapor.setEditable(false);
         VBox namaField = createField("Nama Pelapor", namaPelapor);
 
         ComboBox<PeminjamanChoice> peminjamanCombo = new ComboBox<>();
-        peminjamanCombo.getItems().addAll(PeminjamanDAO.getDipinjamByUser(user.getIdUser()));
+        peminjamanCombo.getItems().setAll(PeminjamanDAO.getDipinjamByUser(user.getIdUser()));
         peminjamanCombo.setPromptText("Pilih barang yang sedang dipinjam");
         peminjamanCombo.setStyle(
             "-fx-background-color: white; " +
@@ -412,8 +452,7 @@ public class PenggantianBarangPage extends BorderPane {
         VBox jumlahBox = createField("Jumlah", jumlahField);
 
         ComboBox<String> kondisiCombo = new ComboBox<>();
-        // sesuai enum DB
-        kondisiCombo.getItems().setAll("hilang", "rusak berat", "rusak ringan");
+        kondisiCombo.getItems().setAll("hilang", "rusak berat", "rusak ringan"); // DB enum
         kondisiCombo.setPromptText("Pilih kondisi");
         kondisiCombo.setStyle(
             "-fx-background-color: white; " +
@@ -436,12 +475,51 @@ public class PenggantianBarangPage extends BorderPane {
         );
         VBox keteranganField = createFieldArea("Keterangan", keterangan);
 
+        // ========= UPLOAD FOTO =========
+        final File[] fotoFile = new File[1];
+
+        Button uploadFotoBtn = new Button("Upload Foto Bukti");
+        uploadFotoBtn.setStyle(
+            "-fx-background-color: #3C4C79; " +
+            "-fx-text-fill: white; " +
+            "-fx-padding: 8 12; " +
+            "-fx-background-radius: 8; " +
+            "-fx-cursor: hand;"
+        );
+
+        Label fotoInfo = new Label("Belum ada foto dipilih");
+        fotoInfo.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11px;");
+
+        ImageView preview = new ImageView();
+        preview.setFitHeight(140);
+        preview.setPreserveRatio(true);
+
+        uploadFotoBtn.setOnAction(ev -> {
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Pilih Foto Bukti");
+            fc.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg")
+            );
+
+            File f = fc.showOpenDialog(popup);
+            if (f != null) {
+                fotoFile[0] = f;
+                fotoInfo.setText(f.getName());
+                preview.setImage(new Image(f.toURI().toString()));
+            }
+        });
+
+        VBox fotoField = new VBox(5, new Label("Foto Bukti"), uploadFotoBtn, fotoInfo, preview);
+        fotoField.setPadding(new Insets(0, 10, 0, 10));
+
         peminjamanCombo.setOnAction(ev -> {
             PeminjamanChoice x = peminjamanCombo.getValue();
             if (x != null) {
                 namaBarang.setText(x.getNamaBarang());
                 kodeBarang.setText(x.getKodeBarang());
                 jumlahField.setText(String.valueOf(x.getJumlah()));
+            } else {
+                namaBarang.clear(); kodeBarang.clear(); jumlahField.clear();
             }
         });
 
@@ -452,7 +530,8 @@ public class PenggantianBarangPage extends BorderPane {
             kodeField,
             jumlahBox,
             kondisiField,
-            keteranganField
+            keteranganField,
+            fotoField
         );
 
         Button submitBtn = new Button("Ajukan Penggantian");
@@ -470,8 +549,14 @@ public class PenggantianBarangPage extends BorderPane {
         submitBtn.setOnAction(e -> {
             if (peminjamanCombo.getValue() == null ||
                 kondisiCombo.getValue() == null ||
-                keterangan.getText().isEmpty()) {
+                keterangan.getText() == null || keterangan.getText().trim().isEmpty()) {
                 new Alert(Alert.AlertType.ERROR, "Semua field harus diisi!").showAndWait();
+                return;
+            }
+
+            // foto wajib
+            if (fotoFile[0] == null) {
+                new Alert(Alert.AlertType.ERROR, "Foto bukti wajib diupload!").showAndWait();
                 return;
             }
 
@@ -482,27 +567,37 @@ public class PenggantianBarangPage extends BorderPane {
                 x.getIdBarang(),
                 x.getIdPeminjaman(),
                 x.getJumlah(),
-                keterangan.getText(),
+                keterangan.getText().trim(),
                 kondisiCombo.getValue()
             );
 
+            try {
+                String savedPath = saveFotoToUploads(fotoFile[0]);
+                r.setFotoBukti(savedPath); 
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                new Alert(Alert.AlertType.ERROR, "Gagal menyimpan foto bukti!").showAndWait();
+                return;
+            }
+
             boolean success = ReplacementDAO.insert(r);
             if (success) {
+                PeminjamanDAO.updateStatusById(x.getIdPeminjaman(), "replacement_pending");
                 popup.close();
-                loadFromDatabase(); // ✅ refresh table
+                loadFromDatabase();
+                applyAllFilters();
                 showSuccessPopup();
             } else {
                 new Alert(Alert.AlertType.ERROR, "Gagal menyimpan data ke database!").showAndWait();
             }
         });
 
-        // ✅ MASUKKAN scrollPane, bukan fields langsung
         container.getChildren().addAll(header, title, scrollPane, submitBtn);
 
         StackPane root = new StackPane(container);
         root.setStyle("-fx-background-color: rgba(0, 0, 0, 0.4);");
 
-        Scene scene = new Scene(root, 450, 650); // sedikit lebih tinggi biar nyaman
+        Scene scene = new Scene(root, 450, 650);
         scene.setFill(Color.TRANSPARENT);
         popup.setScene(scene);
         popup.showAndWait();
@@ -594,10 +689,10 @@ public class PenggantianBarangPage extends BorderPane {
     }
 
     // =========================
-    // SIDEBAR (tetap punyamu)
+    // SIDEBAR (AS IS - dari kode kamu)
     // =========================
     private VBox createSidebar() {
-        VBox sidebar = new VBox(10);
+        VBox sidebar = new VBox(15);
         sidebar.setPadding(new Insets(20, 10, 20, 10));
         sidebar.setAlignment(Pos.TOP_LEFT);
         sidebar.setPrefWidth(200);
@@ -631,7 +726,11 @@ public class PenggantianBarangPage extends BorderPane {
         nameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
 
         Label roleLabel = new Label(user.getRole().toUpperCase());
-        roleLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #9ca3af;");
+        roleLabel.setStyle(
+            "-fx-font-size: 10px;" +
+            "-fx-text-fill: #9ca3af;" +
+            "-fx-font-weight: normal;"
+        );
 
         VBox textBox = new VBox(2, nameLabel, roleLabel);
         textBox.setAlignment(Pos.CENTER_LEFT);
@@ -737,6 +836,7 @@ public class PenggantianBarangPage extends BorderPane {
     // TABLE DATA CLASS
     // =========================
     public static class BarangRusakData {
+        private int idReplacement;
         private String idLaporan;
         private String namaBarang;
         private String kodeBarang;
@@ -745,8 +845,9 @@ public class PenggantianBarangPage extends BorderPane {
         private String kondisi;
         private String status;
 
-        public BarangRusakData(String idLaporan, String namaBarang, String kodeBarang,
+        public BarangRusakData(int idReplacement, String idLaporan, String namaBarang, String kodeBarang,
                                String namaPeminjam, String tanggalLaporan, String kondisi, String status) {
+            this.idReplacement = idReplacement;
             this.idLaporan = idLaporan;
             this.namaBarang = namaBarang;
             this.kodeBarang = kodeBarang;
@@ -756,6 +857,7 @@ public class PenggantianBarangPage extends BorderPane {
             this.status = status;
         }
 
+        public int getIdReplacement() { return idReplacement; }
         public String getIdLaporan() { return idLaporan; }
         public String getNamaBarang() { return namaBarang; }
         public String getKodeBarang() { return kodeBarang; }

@@ -1,21 +1,13 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.mycompany.inventaris.view;
 
-/**
- *
- * @author Amy
- */
-
-import com.mycompany.inventaris.dao.BarangDAO;
 import com.mycompany.inventaris.dao.AuditTrailDAO;
+import com.mycompany.inventaris.dao.BarangDAO;
 import com.mycompany.inventaris.model.Barang;
 import com.mycompany.inventaris.model.User;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.print.PrinterJob;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
@@ -32,17 +24,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import javafx.print.PrinterJob;
-
 public class ManageDataPage extends BorderPane {
 
     private TableView<BarangData> table;
-    private List<BarangData> allData;
-    private User user;
+    private final List<BarangData> allData;
+    private final User user;
 
     public ManageDataPage(User user) {
         this.user = user;
-        allData = new ArrayList<>();
+        this.allData = new ArrayList<>();
 
         try {
             for (Barang b : BarangDAO.getAll()) {
@@ -56,6 +46,7 @@ public class ManageDataPage extends BorderPane {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
         initializeUI();
     }
 
@@ -85,7 +76,6 @@ public class ManageDataPage extends BorderPane {
 
         topBar.getChildren().add(searchField);
 
-        // Table Container
         VBox tableContainer = new VBox();
         tableContainer.setStyle(
                 "-fx-background-color: white; " +
@@ -95,7 +85,6 @@ public class ManageDataPage extends BorderPane {
                         "-fx-background-radius: 10;"
         );
 
-        // Table
         table = new TableView<>();
         table.setStyle(
                 "-fx-background-color: transparent; " +
@@ -103,24 +92,20 @@ public class ManageDataPage extends BorderPane {
         );
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        // Apply RED header styling
         this.sceneProperty().addListener((observable, oldScene, newScene) -> {
             if (newScene != null) {
                 javafx.application.Platform.runLater(() -> {
                     javafx.scene.Node headerBg = table.lookup(".column-header-background");
-                    if (headerBg != null) {
-                        headerBg.setStyle("-fx-background-color: #B71C1C;");
-                    }
-                    table.lookupAll(".column-header").forEach(node -> {
-                        node.setStyle("-fx-background-color: #B71C1C;");
-                    });
-                    table.lookupAll(".column-header > .label").forEach(node -> {
-                        node.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;");
-                    });
+                    if (headerBg != null) headerBg.setStyle("-fx-background-color: #B71C1C;");
+
+                    table.lookupAll(".column-header")
+                            .forEach(node -> node.setStyle("-fx-background-color: #B71C1C;"));
+
+                    table.lookupAll(".column-header > .label")
+                            .forEach(node -> node.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;"));
+
                     javafx.scene.Node filler = table.lookup(".filler");
-                    if (filler != null) {
-                        filler.setStyle("-fx-background-color: #B71C1C;");
-                    }
+                    if (filler != null) filler.setStyle("-fx-background-color: #B71C1C;");
                 });
             }
         });
@@ -145,60 +130,54 @@ public class ManageDataPage extends BorderPane {
         jumlahCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getJumlah()));
 
         table.getColumns().addAll(idCol, namaCol, lokasiCol, jumlahCol);
-        allData.forEach(data -> table.getItems().add(data));
+        table.getItems().addAll(allData);
 
         tableContainer.getChildren().add(table);
 
-        // DOUBLE CLICK ROW = EDIT/DELETE
         table.setRowFactory(tv -> {
             TableRow<BarangData> row = new TableRow<>();
             row.setOnMouseClicked(ev -> {
-                if (!user.isSuperAdmin()) return; // <--- ini penting
+                if (!user.isSuperAdmin()) return;
                 if (!row.isEmpty() && ev.getClickCount() == 2) {
                     BarangData selected = row.getItem();
+
                     Alert pilih = new Alert(Alert.AlertType.CONFIRMATION);
                     pilih.setTitle("Pilih Aksi");
                     pilih.setHeaderText("Mau ngapain dengan barang ini?");
                     ButtonType editBtn = new ButtonType("Edit / Delete");
                     ButtonType tambahStokBtn = new ButtonType("Tambah Stok");
                     ButtonType batal = new ButtonType("Batal", ButtonBar.ButtonData.CANCEL_CLOSE);
-
                     pilih.getButtonTypes().setAll(editBtn, tambahStokBtn, batal);
 
                     pilih.showAndWait().ifPresent(res -> {
-                        if (res == editBtn) {
-                            showEditBarangPopup(selected);
-                        } else if (res == tambahStokBtn) {
-                            showTambahStokPopup(selected);
-                        }
+                        if (res == editBtn) showEditBarangPopup(selected);
+                        else if (res == tambahStokBtn) showTambahStokPopup(selected);
                     });
                 }
             });
             return row;
         });
 
-        // Search functionality
         searchField.textProperty().addListener((obs, old, newVal) -> {
             table.getItems().clear();
-            if (newVal.isEmpty()) {
-                allData.forEach(data -> table.getItems().add(data));
-            } else {
-                String keyword = newVal.toLowerCase();
-                allData.stream()
-                        .filter(data ->
-                                data.getIdBarang().toLowerCase().contains(keyword) ||
-                                        data.getBarang().toLowerCase().contains(keyword) ||
-                                        data.getLokasi().toLowerCase().contains(keyword))
-                        .forEach(data -> table.getItems().add(data));
+            if (newVal == null || newVal.isEmpty()) {
+                table.getItems().addAll(allData);
+                return;
             }
+
+            String keyword = newVal.toLowerCase();
+            allData.stream()
+                    .filter(data ->
+                            data.getIdBarang().toLowerCase().contains(keyword) ||
+                                    data.getBarang().toLowerCase().contains(keyword) ||
+                                    data.getLokasi().toLowerCase().contains(keyword))
+                    .forEach(data -> table.getItems().add(data));
         });
 
-        // Bottom buttons and pagination
         HBox bottomBar = new HBox(15);
         bottomBar.setAlignment(Pos.CENTER);
         bottomBar.setPadding(new Insets(15, 0, 0, 0));
 
-        // ===== FIX: fitur pindah barang TIDAK DIPAKAI, jadi sembunyikan SELALU (tanpa ubah layout) =====
         Button pindahBtn = new Button("Pindah Barang");
         pindahBtn.setStyle(
                 "-fx-background-color: #3C4C79; " +
@@ -211,10 +190,7 @@ public class ManageDataPage extends BorderPane {
         );
         pindahBtn.setDisable(true);
         pindahBtn.setVisible(false);
-        pindahBtn.setManaged(false); // biar tidak nyisain space
-
-        // kalau kamu mau tetap keep handler (ga kepake), biarin; tapi aman juga kalau dibiarkan.
-        // pindahBtn.setOnAction(e -> showPindahBarangPopup());
+        pindahBtn.setManaged(false);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -230,7 +206,6 @@ public class ManageDataPage extends BorderPane {
                         "-fx-cursor: hand;"
         );
 
-        // FIX: Add hanya untuk SuperAdmin (kalau mau CRUD penuh untuk SuperAdmin)
         if (!user.isSuperAdmin()) {
             addBtn.setDisable(true);
             addBtn.setVisible(false);
@@ -266,7 +241,6 @@ public class ManageDataPage extends BorderPane {
         Region spacer2 = new Region();
         HBox.setHgrow(spacer2, Priority.ALWAYS);
 
-        // Pagination
         HBox pagination = new HBox(10);
         pagination.setAlignment(Pos.CENTER_RIGHT);
 
@@ -296,23 +270,16 @@ public class ManageDataPage extends BorderPane {
         Stage popup = new Stage();
         popup.setTitle("Tambah Barang");
 
-        // INPUT FIELDS
         TextField kodeField = new TextField();
         kodeField.setPromptText("Kode Barang");
 
         TextField namaField = new TextField();
         namaField.setPromptText("Nama Barang");
 
-        // ENUM: kategori
         ComboBox<String> kategoriCombo = new ComboBox<>();
-        kategoriCombo.getItems().addAll(
-                "consumable",
-                "non_consumable",
-                "reusable"
-        );
+        kategoriCombo.getItems().addAll("consumable", "non_consumable", "reusable");
         kategoriCombo.setPromptText("Kategori");
 
-        // Stok (numeric only)
         TextField stokField = new TextField();
         stokField.setPromptText("Stok");
         stokField.setTextFormatter(new TextFormatter<>(change -> {
@@ -320,34 +287,22 @@ public class ManageDataPage extends BorderPane {
             return text.matches("\\d*") ? change : null;
         }));
 
-        // ENUM: kondisi
         ComboBox<String> kondisiCombo = new ComboBox<>();
-        kondisiCombo.getItems().addAll(
-                "baik",
-                "rusak",
-                "digunakan"
-        );
+        kondisiCombo.getItems().addAll("baik", "rusak", "digunakan");
         kondisiCombo.setPromptText("Kondisi");
 
         TextField lokasiField = new TextField();
         lokasiField.setPromptText("Lokasi");
 
-        // Deskripsi
         TextArea deskripsiArea = new TextArea();
         deskripsiArea.setPromptText("Deskripsi barang");
         deskripsiArea.setWrapText(true);
         deskripsiArea.setPrefRowCount(3);
 
-        // ENUM: status
         ComboBox<String> statusCombo = new ComboBox<>();
-        statusCombo.getItems().addAll(
-                "tersedia",
-                "rusak",
-                "dipinjam"
-        );
+        statusCombo.getItems().addAll("tersedia", "rusak", "dipinjam");
         statusCombo.setPromptText("Status");
 
-        // BUTTONS
         Button simpanBtn = new Button("Simpan");
         Button batalBtn = new Button("Batal");
 
@@ -359,7 +314,7 @@ public class ManageDataPage extends BorderPane {
                 kondisiCombo.getValue(),
                 lokasiField.getText(),
                 statusCombo.getValue(),
-                deskripsiArea.getText(), 
+                deskripsiArea.getText(),
                 popup
         ));
 
@@ -369,7 +324,7 @@ public class ManageDataPage extends BorderPane {
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
 
         VBox layout = new VBox(12,
-                new Label("Kode Barang"), kodeField,   // ✅ hapus duplikat kodeField
+                new Label("Kode Barang"), kodeField,
                 new Label("Nama Barang"), namaField,
                 new Label("Kategori"), kategoriCombo,
                 new Label("Stok"), stokField,
@@ -386,18 +341,31 @@ public class ManageDataPage extends BorderPane {
         popup.show();
     }
 
-
     private void showEditBarangPopup(BarangData data) {
         if (!user.isSuperAdmin()) return;
 
         Stage popup = new Stage();
         popup.setTitle("Edit / Delete Barang");
 
+        Barang barangDb = null;
+        try {
+            for (Barang b : BarangDAO.getAll()) {
+                if (b.getKode() != null && b.getKode().equals(data.getIdBarang())) {
+                    barangDb = b;
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        String currentStatus = (barangDb != null && barangDb.getStatus() != null) ? barangDb.getStatus() : "tersedia";
+        String currentKondisi = (barangDb != null && barangDb.getKondisi() != null) ? barangDb.getKondisi() : "baik";
+
         TextField kodeField = new TextField(data.getIdBarang());
         kodeField.setDisable(true);
 
         TextField namaField = new TextField(data.getBarang());
-
         TextField lokasiField = new TextField(data.getLokasi());
 
         TextField stokField = new TextField(data.getJumlah());
@@ -406,6 +374,14 @@ public class ManageDataPage extends BorderPane {
             return text.matches("\\d*") ? change : null;
         }));
 
+        ComboBox<String> statusCombo = new ComboBox<>();
+        statusCombo.getItems().addAll("tersedia", "rusak", "dipinjam");
+        statusCombo.setValue(currentStatus.toLowerCase());
+
+        ComboBox<String> kondisiCombo = new ComboBox<>();
+        kondisiCombo.getItems().addAll("baik", "rusak", "digunakan");
+        kondisiCombo.setValue(currentKondisi.toLowerCase());
+
         Button updateBtn = new Button("Update");
         Button deleteBtn = new Button("Delete");
         Button cancelBtn = new Button("Cancel");
@@ -413,11 +389,17 @@ public class ManageDataPage extends BorderPane {
         updateBtn.setOnAction(e -> {
             if (namaField.getText().trim().isEmpty() || stokField.getText().trim().isEmpty()) return;
 
+            int stok = Integer.parseInt(stokField.getText());
+            String status = statusCombo.getValue();
+            String kondisi = kondisiCombo.getValue();
+
             boolean ok = BarangDAO.updateBarangByKode(
                     kodeField.getText(),
                     namaField.getText(),
                     lokasiField.getText(),
-                    Integer.parseInt(stokField.getText())
+                    stok,
+                    status,
+                    kondisi
             );
 
             if (ok) {
@@ -455,14 +437,18 @@ public class ManageDataPage extends BorderPane {
                 new Label("Nama Barang"), namaField,
                 new Label("Lokasi"), lokasiField,
                 new Label("Stok"), stokField,
+                new Label("Status"), statusCombo,
+                new Label("Kondisi"), kondisiCombo,
                 btns
         );
         layout.setPadding(new Insets(20));
 
-        popup.setScene(new Scene(layout, 350, 320));
+        popup.setScene(new Scene(layout, 350, 430));
         popup.show();
     }
-    
+
+
+
     private void showTambahStokPopup(BarangData data) {
         if (!user.isSuperAdmin()) return;
 
@@ -544,7 +530,6 @@ public class ManageDataPage extends BorderPane {
         popup.setScene(new Scene(layout, 380, 420));
         popup.show();
     }
-
 
     private void handleAdd(
             String kode,
@@ -664,9 +649,7 @@ public class ManageDataPage extends BorderPane {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Export to CSV");
         fileChooser.setInitialFileName("master_data_management.csv");
-        fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("CSV Files", "*.csv")
-        );
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
 
         File file = fileChooser.showSaveDialog(this.getScene().getWindow());
 
@@ -699,30 +682,6 @@ public class ManageDataPage extends BorderPane {
                 alert.showAndWait();
             }
         }
-    }
-
-    private void showPindahBarangPopup() {
-      
-    }
-
-    // Inner class for DetailBarang in popup (tetap dipertahankan biar compile kalau ada referensi lama)
-    public static class DetailBarang {
-        private String lokasi;
-        private String idBarang;
-        private String namaBarang;
-        private String qty;
-
-        public DetailBarang(String lokasi, String idBarang, String namaBarang, String qty) {
-            this.lokasi = lokasi;
-            this.idBarang = idBarang;
-            this.namaBarang = namaBarang;
-            this.qty = qty;
-        }
-
-        public String getLokasi() { return lokasi; }
-        public String getIdBarang() { return idBarang; }
-        public String getNamaBarang() { return namaBarang; }
-        public String getQty() { return qty; }
     }
 
     private Button createPaginationButton(String text) {
@@ -758,36 +717,27 @@ public class ManageDataPage extends BorderPane {
         logoBox.setAlignment(Pos.TOP_LEFT);
 
         Image userPhoto;
-
         if (user.getPhoto() != null && user.getPhoto().length > 0) {
-            userPhoto = new Image(
-                    new java.io.ByteArrayInputStream(user.getPhoto())
-            );
+            userPhoto = new Image(new java.io.ByteArrayInputStream(user.getPhoto()));
         } else {
-            userPhoto = new Image(
-                    getClass().getResourceAsStream("/assets/user.png")
-            );
+            userPhoto = new Image(getClass().getResourceAsStream("/assets/user.png"));
         }
 
         ImageView userImage = new ImageView(userPhoto);
         userImage.setFitWidth(40);
         userImage.setFitHeight(40);
         userImage.setPreserveRatio(true);
-        Circle clipCircle = new Circle(20, 20, 20);
-        userImage.setClip(clipCircle);
+        userImage.setClip(new Circle(20, 20, 20));
 
         Label nameLabel = new Label(user.getNama());
         nameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
 
         Label roleLabel = new Label(user.getRole().toUpperCase());
-        roleLabel.setStyle(
-                "-fx-font-size: 10px;" +
-                        "-fx-text-fill: #9ca3af;" +
-                        "-fx-font-weight: normal;"
-        );
+        roleLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #9ca3af; -fx-font-weight: normal;");
 
         VBox textBox = new VBox(2, nameLabel, roleLabel);
         textBox.setAlignment(Pos.CENTER_LEFT);
+
         HBox userBox = new HBox(10, userImage, textBox);
         userBox.setAlignment(Pos.CENTER_LEFT);
         userBox.setPadding(new Insets(10, 10, 20, 10));
@@ -819,20 +769,17 @@ public class ManageDataPage extends BorderPane {
 
         verifikasiBtn.setOnAction(e -> {
             Stage currentStage = (Stage) verifikasiBtn.getScene().getWindow();
-            Scene newScene = new Scene(new VerifikasiPage(user), 1280, 720);
-            currentStage.setScene(newScene);
+            currentStage.setScene(new Scene(new VerifikasiPage(user), 1280, 720));
         });
 
         userBtn.setOnAction(e -> {
             Stage currentStage = (Stage) userBtn.getScene().getWindow();
-            Scene newScene = new Scene(new AdminUserPage(user), 1280, 720);
-            currentStage.setScene(newScene);
+            currentStage.setScene(new Scene(new AdminUserPage(user), 1280, 720));
         });
 
         auditTrailBtn.setOnAction(e -> {
             Stage currentStage = (Stage) auditTrailBtn.getScene().getWindow();
-            Scene newScene = new Scene(new AuditTrailPage(user), 1280, 720);
-            currentStage.setScene(newScene);
+            currentStage.setScene(new Scene(new AuditTrailPage(user), 1280, 720));
         });
 
         laporanPinjamBtn.setOnAction(e -> {
@@ -855,20 +802,12 @@ public class ManageDataPage extends BorderPane {
         laporanSubMenu.getChildren().addAll(laporanPinjamBtn, laporanGunaBtn);
 
         menuBox.getChildren().add(dashboardBtn);
-
-        if (user.isAdmin()) {
-            menuBox.getChildren().add(verifikasiBtn);
-        }
-
-        if (user.isSuperAdmin()) {
-            menuBox.getChildren().add(userBtn);
-        }
+        if (user.isAdmin()) menuBox.getChildren().add(verifikasiBtn);
+        if (user.isSuperAdmin()) menuBox.getChildren().add(userBtn);
 
         menuBox.getChildren().add(manageDataBtn);
 
-        if (user.isSuperAdmin()) {
-            menuBox.getChildren().add(auditTrailBtn);
-        }
+        if (user.isSuperAdmin()) menuBox.getChildren().add(auditTrailBtn);
 
         menuBox.getChildren().addAll(laporanBtn, laporanSubMenu);
 
@@ -904,8 +843,7 @@ public class ManageDataPage extends BorderPane {
             );
 
             Stage currentStage = (Stage) logoutBtn.getScene().getWindow();
-            Scene newScene = new Scene(new MainPage(currentStage), 1280, 720);
-            currentStage.setScene(newScene);
+            currentStage.setScene(new Scene(new MainPage(currentStage), 1280, 720));
         });
 
         sidebar.getChildren().addAll(logoBox, userBox, menuBox, spacer, logoutBtn);
@@ -914,7 +852,6 @@ public class ManageDataPage extends BorderPane {
 
     private Button createMenuButton(String text, boolean isActive) {
         Button btn = new Button(text);
-
         btn.setWrapText(true);
         btn.setTextAlignment(javafx.scene.text.TextAlignment.LEFT);
         btn.setAlignment(Pos.CENTER_LEFT);
@@ -948,12 +885,11 @@ public class ManageDataPage extends BorderPane {
         return btn;
     }
 
-    // Inner class for BarangData
     public static class BarangData {
-        private String idBarang;
-        private String barang;
-        private String lokasi;
-        private String jumlah;
+        private final String idBarang;
+        private final String barang;
+        private final String lokasi;
+        private final String jumlah;
 
         public BarangData(String idBarang, String barang, String lokasi, String jumlah) {
             this.idBarang = idBarang;

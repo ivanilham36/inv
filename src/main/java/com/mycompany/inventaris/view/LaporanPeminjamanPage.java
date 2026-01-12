@@ -149,7 +149,7 @@ private void refreshData() {
         statusLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
         
         statusFilter = new ComboBox<>();
-        statusFilter.getItems().addAll("Semua Status", "Approved", "Rejected", "Pending");
+        statusFilter.getItems().addAll("Semua Status", "Approved", "Dipinjam", "Ditolak", "Dikembalikan");
         statusFilter.setValue("Semua Status");
         statusFilter.setStyle("-fx-font-size: 12px;");
         
