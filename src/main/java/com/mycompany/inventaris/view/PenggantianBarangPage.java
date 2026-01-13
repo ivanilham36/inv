@@ -578,8 +578,9 @@ public class PenggantianBarangPage extends BorderPane {
         okBtn.setOnAction(e -> {
             popup.close();
             Stage currentStage = (Stage) this.getScene().getWindow();
-            Scene newScene = new Scene(new UserPage(user), 1280, 720);
+            Scene newScene = new Scene(new UserPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
         container.getChildren().addAll(icon, title, message, okBtn);
@@ -646,20 +647,23 @@ public class PenggantianBarangPage extends BorderPane {
 
         dashboardBtn.setOnAction(e -> {
             Stage currentStage = (Stage) dashboardBtn.getScene().getWindow();
-            Scene newScene = new Scene(new UserPage(user), 1280, 720);
+            Scene newScene = new Scene(new UserPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
         statusBtn.setOnAction(e -> {
             Stage currentStage = (Stage) statusBtn.getScene().getWindow();
-            Scene newScene = new Scene(new StatusPage(user), 1280, 720);
+            Scene newScene = new Scene(new StatusPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
         riwayatBtn.setOnAction(e -> {
             Stage currentStage = (Stage) riwayatBtn.getScene().getWindow();
-            Scene newScene = new Scene(new RiwayatPage(user), 1280, 720);
+            Scene newScene = new Scene(new RiwayatPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
         menuBox.getChildren().addAll(dashboardBtn, statusBtn, riwayatBtn);
@@ -696,8 +700,9 @@ public class PenggantianBarangPage extends BorderPane {
             );
 
             Stage currentStage = (Stage) logoutBtn.getScene().getWindow();
-            Scene newScene = new Scene(new MainPage(currentStage), 1280, 720);
+            Scene newScene = new Scene(new MainPage(currentStage), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
         sidebar.getChildren().addAll(logoBox, userBox, menuBox, spacer, logoutBtn);

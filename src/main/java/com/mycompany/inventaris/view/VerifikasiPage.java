@@ -371,24 +371,28 @@ public class VerifikasiPage extends BorderPane {
 
         dashboardBtn.setOnAction(e -> {
             Stage currentStage = (Stage) dashboardBtn.getScene().getWindow();
-            Scene newScene = new Scene(new AdminPage(admin), 1280, 720);
+            Scene newScene = new Scene(new AdminPage(admin), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
         manageDataBtn.setOnAction(e -> {
             Stage currentStage = (Stage) manageDataBtn.getScene().getWindow();
-            Scene newScene = new Scene(new ManageDataPage(admin), 1280, 720);
+            Scene newScene = new Scene(new ManageDataPage(admin), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
         laporanPinjamBtn.setOnAction(e -> {
             Stage s = (Stage) laporanBtn.getScene().getWindow();
-            s.setScene(new Scene(new LaporanPeminjamanPage(admin), 1280, 720));
+            s.setScene(new Scene(new LaporanPeminjamanPage(admin), s.getWidth(), s.getHeight()));
+            s.setMaximized(true);
         });
 
         laporanGunaBtn.setOnAction(e -> {
             Stage s = (Stage) laporanGunaBtn.getScene().getWindow();
-            s.setScene(new Scene(new LaporanPenggunaanPage(admin), 1280, 720));
+            s.setScene(new Scene(new LaporanPenggunaanPage(admin), s.getWidth(), s.getHeight()));
+            s.setMaximized(true);
         });
 
         laporanBtn.setOnAction(e -> {
@@ -430,8 +434,9 @@ public class VerifikasiPage extends BorderPane {
             );
 
             Stage currentStage = (Stage) logoutBtn.getScene().getWindow();
-            Scene newScene = new Scene(new MainPage(currentStage), 1280, 720);
+            Scene newScene = new Scene(new MainPage(currentStage), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
         sidebar.getChildren().addAll(logoBox, userBox, menuBox, spacer, logoutBtn);

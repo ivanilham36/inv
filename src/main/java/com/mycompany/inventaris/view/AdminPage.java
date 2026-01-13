@@ -130,22 +130,26 @@ public class AdminPage extends BorderPane {
         // ACTION
         verifikasiBtn.setOnAction(e -> {
             Stage s = (Stage) verifikasiBtn.getScene().getWindow();
-            s.setScene(new Scene(new VerifikasiPage(admin), 1280, 720));
+            s.setScene(new Scene(new VerifikasiPage(admin), s.getWidth(), s.getHeight()));
+            s.setMaximized(true);
         });
 
         manageDataBtn.setOnAction(e -> {
             Stage s = (Stage) manageDataBtn.getScene().getWindow();
-            s.setScene(new Scene(new ManageDataPage(admin), 1280, 720));
+            s.setScene(new Scene(new ManageDataPage(admin), s.getWidth(), s.getHeight()));
+            s.setMaximized(true);
         });
 
         laporanPinjamBtn.setOnAction(e -> {
             Stage s = (Stage) laporanBtn.getScene().getWindow();
-            s.setScene(new Scene(new LaporanPeminjamanPage(admin), 1280, 720));
+            s.setScene(new Scene(new LaporanPeminjamanPage(admin), s.getWidth(), s.getHeight()));
+            s.setMaximized(true);
         });
 
         laporanGunaBtn.setOnAction(e -> {
             Stage s = (Stage) laporanGunaBtn.getScene().getWindow();
-            s.setScene(new Scene(new LaporanPenggunaanPage(admin), 1280, 720));
+            s.setScene(new Scene(new LaporanPenggunaanPage(admin), s.getWidth(), s.getHeight()));
+            s.setMaximized(true);
         });
 
         // TOGGLE LAPORAN ▼ ▲
@@ -203,8 +207,9 @@ public class AdminPage extends BorderPane {
         "BERHASIL"
     ); 
         Stage currentStage = (Stage) logoutBtn.getScene().getWindow();
-    Scene newScene = new Scene(new MainPage(currentStage), 1280, 720);
+    Scene newScene = new Scene(new MainPage(currentStage), currentStage.getWidth(), currentStage.getHeight());
     currentStage.setScene(newScene);
+    stage.setMaximized(true);
        });
 
         sidebar.getChildren().addAll(logoBox, userBox, menuBox, spacer, logoutBtn);

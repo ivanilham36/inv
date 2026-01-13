@@ -20,14 +20,15 @@ public class AppLauncher extends Application {
     @Override
     public void start(Stage stage) {
         stage.getIcons().add(
-            new Image(getClass().getResourceAsStream("/assets/logoAsa.png"))
+            new Image(getClass().getResourceAsStream("/assets/asaindo.png"))
         );
         stage.setTitle("Ngetes doang bjirr");
-        stage.setResizable(false);
+        stage.setResizable(true);
 
         MainPage root = new MainPage(stage);
 
-        stage.setScene(new Scene(root, 1280, 720));
+        stage.setScene(new Scene(root));
+         stage.setMaximized(true);
         stage.show();
     }
 }

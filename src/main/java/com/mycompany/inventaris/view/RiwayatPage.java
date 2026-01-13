@@ -287,13 +287,15 @@ public class RiwayatPage extends BorderPane {
 
         dashboardBtn.setOnAction(e -> {
             Stage currentStage = (Stage) dashboardBtn.getScene().getWindow();
-            Scene newScene = new Scene(new UserPage(user), 1280, 720);
+            Scene newScene = new Scene(new UserPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
         statusBtn.setOnAction(e -> {
-            Scene newScene = new Scene(new StatusPage(user), 1280, 720);
             Stage currentStage = (Stage) statusBtn.getScene().getWindow();
+            Scene newScene = new Scene(new StatusPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
         menuBox.getChildren().addAll(dashboardBtn, statusBtn, riwayatBtn);
@@ -328,8 +330,9 @@ public class RiwayatPage extends BorderPane {
         "BERHASIL"
     ); 
         Stage currentStage = (Stage) logoutBtn.getScene().getWindow();
-    Scene newScene = new Scene(new MainPage(currentStage), 1280, 720);
+    Scene newScene = new Scene(new MainPage(currentStage), currentStage.getWidth(), currentStage.getHeight());
     currentStage.setScene(newScene);
+    currentStage.setMaximized(true);
        });
 
         sidebar.getChildren().addAll(logoBox, userBox, menuBox, spacer, logoutBtn);

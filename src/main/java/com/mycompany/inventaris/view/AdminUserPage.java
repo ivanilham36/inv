@@ -155,7 +155,8 @@ public class AdminUserPage extends BorderPane {
 
                 // reload page
                 Stage stage = (Stage) sidebarImage.getScene().getWindow();
-                stage.setScene(new Scene(new AdminUserPage(superadmin), 1280, 720));
+                stage.setScene(new Scene(new AdminUserPage(superadmin), stage.getWidth(), stage.getHeight()));
+                stage.setMaximized(true);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1103,30 +1104,35 @@ if (success) {
 
         dashboardBtn.setOnAction(e -> {
             Stage currentStage = (Stage) dashboardBtn.getScene().getWindow();
-            Scene newScene = new Scene(new SuperAdminPage(superadmin), 1280, 720);
+            Scene newScene = new Scene(new SuperAdminPage(superadmin), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
         
         manageDataBtn.setOnAction(e -> {
             Stage currentStage = (Stage) manageDataBtn.getScene().getWindow();
-            Scene newScene = new Scene(new ManageDataPage(superadmin), 1280, 720);
+            Scene newScene = new Scene(new ManageDataPage(superadmin), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
         
         auditTrailBtn.setOnAction(e -> {
             Stage currentStage = (Stage) auditTrailBtn.getScene().getWindow();
-            Scene newScene = new Scene(new AuditTrailPage(superadmin), 1280, 720);
+            Scene newScene = new Scene(new AuditTrailPage(superadmin), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
         
         laporanPinjamBtn.setOnAction(e -> {
             Stage s = (Stage) laporanBtn.getScene().getWindow();
-            s.setScene(new Scene(new LaporanPeminjamanPage(superadmin), 1280, 720));
+            s.setScene(new Scene(new LaporanPeminjamanPage(superadmin), s.getWidth(), s.getHeight()));
+            s.setMaximized(true);
         });
 
         laporanGunaBtn.setOnAction(e -> {
             Stage s = (Stage) laporanGunaBtn.getScene().getWindow();
-            s.setScene(new Scene(new LaporanPenggunaanPage(superadmin), 1280, 720));
+            s.setScene(new Scene(new LaporanPenggunaanPage(superadmin), s.getWidth(), s.getHeight()));
+            s.setMaximized(true);
         });
         
         // TOGGLE LAPORAN ▼ ▲
@@ -1175,8 +1181,9 @@ if (success) {
         "BERHASIL"
     );
             Stage currentStage = (Stage) logoutBtn.getScene().getWindow();
-            Scene newScene = new Scene(new MainPage(currentStage), 1280, 720);
+            Scene newScene = new Scene(new MainPage(currentStage), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
         sidebar.getChildren().addAll(logoBox, userBox, menuBox, spacer, logoutBtn);

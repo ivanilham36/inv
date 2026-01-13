@@ -102,8 +102,9 @@ public class MainPage extends StackPane {
             "-fx-cursor: hand;"
         );
         loginBtn.setOnAction(e -> {
-            Scene newScene = new Scene(new LoginPage(stage), 1280, 720);
+            Scene newScene = new Scene(new LoginPage(stage));
             stage.setScene(newScene);
+            stage.setMaximized(true);
         });
 
         VBox leftContent = new VBox(title, subtitle, loginBtn);

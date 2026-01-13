@@ -337,15 +337,21 @@ public class LoginPage extends StackPane {
             case "mahasiswa":
             case "dosen":
             case "karyawan":
-                scene = new Scene(new UserPage(u), 1280, 720);
+                scene = new Scene(new UserPage(u), stage.getWidth(), stage.getHeight());
+                stage.setScene(scene);
+                stage.setMaximized(true);
                 break;
 
             case "admin":
-                scene = new Scene(new AdminPage(u), 1280, 720);
+                scene = new Scene(new AdminPage(u), stage.getWidth(), stage.getHeight());
+                stage.setScene(scene);
+                stage.setMaximized(true);
                 break;
 
             case "superadmin":
-                scene = new Scene(new SuperAdminPage(u), 1280, 720);
+                scene = new Scene(new SuperAdminPage(u), stage.getWidth(), stage.getHeight());
+                stage.setScene(scene);
+                stage.setMaximized(true);
                 break;
 
             default:

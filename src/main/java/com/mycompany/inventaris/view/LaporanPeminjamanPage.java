@@ -637,38 +637,45 @@ private void resetFilters() {
         dashboardBtn.setOnAction(e -> {
                 Stage s = (Stage) sidebar.getScene().getWindow();
             if (user.isSuperAdmin()) {
-                s.setScene(new Scene(new SuperAdminPage(user), 1280, 720));
+                s.setScene(new Scene(new SuperAdminPage(user), s.getWidth(), s.getHeight()));
+                s.setMaximized(true);
             } else {
-                s.setScene(new Scene(new AdminPage(user), 1280, 720));
+                s.setScene(new Scene(new AdminPage(user), s.getWidth(), s.getHeight()));
+                s.setMaximized(true);
             }
         });
         
         verifikasiBtn.setOnAction(e -> {
             Stage s = (Stage) verifikasiBtn.getScene().getWindow();
-            s.setScene(new Scene(new VerifikasiPage(user), 1280, 720));
+            s.setScene(new Scene(new VerifikasiPage(user), s.getWidth(), s.getHeight()));
+            s.setMaximized(true);
         });
         
         userBtn.setOnAction(e -> {
             Stage currentStage = (Stage) userBtn.getScene().getWindow();
-            Scene newScene = new Scene(new AdminUserPage(user), 1280, 720);
+            Scene newScene = new Scene(new AdminUserPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
         manageDataBtn.setOnAction(e -> {
             Stage s = (Stage) manageDataBtn.getScene().getWindow();
-            s.setScene(new Scene(new ManageDataPage(user), 1280, 720));
+            s.setScene(new Scene(new ManageDataPage(user), s.getWidth(), s.getHeight()));
+            s.setMaximized(true);
         });
         
         auditTrailBtn.setOnAction(e -> {
             Stage currentStage = (Stage) auditTrailBtn.getScene().getWindow();
-            Scene newScene = new Scene(new AuditTrailPage(user), 1280, 720);
+            Scene newScene = new Scene(new AuditTrailPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
         
 
         laporanGunaBtn.setOnAction(e -> {
             Stage s = (Stage) laporanGunaBtn.getScene().getWindow();
-            s.setScene(new Scene(new LaporanPenggunaanPage(user), 1280, 720));
+            s.setScene(new Scene(new LaporanPenggunaanPage(user), s.getWidth(), s.getHeight()));
+            s.setMaximized(true);
         });
 
         // TOGGLE LAPORAN ▼ ▲
@@ -734,8 +741,9 @@ private void resetFilters() {
         "BERHASIL"
     ); 
         Stage currentStage = (Stage) logoutBtn.getScene().getWindow();
-    Scene newScene = new Scene(new MainPage(currentStage), 1280, 720);
+    Scene newScene = new Scene(new MainPage(currentStage), currentStage.getWidth(), currentStage.getHeight());
     currentStage.setScene(newScene);
+    currentStage.setMaximized(true);
        });
 
 

@@ -107,15 +107,17 @@ public class UserPage extends BorderPane {
         Button riwayatBtn = createMenuButton("🕐  Riwayat", false);
 
         statusBtn.setOnAction(e -> {
-            Scene newScene = new Scene(new StatusPage(user), 1280, 720);
             Stage currentStage = (Stage) statusBtn.getScene().getWindow();
+            Scene newScene = new Scene(new StatusPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
         
         riwayatBtn.setOnAction(e -> {
-            Scene newScene = new Scene(new RiwayatPage(user), 1280, 720);
             Stage currentStage = (Stage) riwayatBtn.getScene().getWindow();
+            Scene newScene = new Scene(new RiwayatPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
         menuBox.getChildren().addAll(dashboardBtn, statusBtn, riwayatBtn);
@@ -151,8 +153,9 @@ public class UserPage extends BorderPane {
         "BERHASIL"
     ); 
         Stage currentStage = (Stage) logoutBtn.getScene().getWindow();
-    Scene newScene = new Scene(new MainPage(currentStage), 1280, 720);
+    Scene newScene = new Scene(new MainPage(currentStage), currentStage.getWidth(), currentStage.getHeight());
     currentStage.setScene(newScene);
+    currentStage.setMaximized(true);
        });
 
         sidebar.getChildren().addAll(logoBox, userBox, menuBox, spacer, logoutBtn);
@@ -188,8 +191,9 @@ public class UserPage extends BorderPane {
 
         peminjamanBtn.setOnAction(e -> {
             Stage currentStage = (Stage) peminjamanBtn.getScene().getWindow();
-            Scene newScene = new Scene(new PeminjamanBarangPage(user), 1280, 720);
+            Scene newScene = new Scene(new PeminjamanBarangPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
 
@@ -206,8 +210,9 @@ public class UserPage extends BorderPane {
         
         pengembalianBtn.setOnAction(e -> {
             Stage currentStage = (Stage) pengembalianBtn.getScene().getWindow();
-            Scene newScene = new Scene(new PengembalianBarangPage(user), 1280, 720);
+            Scene newScene = new Scene(new PengembalianBarangPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
         
         Button replacementBtn = new Button("PENGGANTIAN BARANG");
@@ -223,8 +228,9 @@ public class UserPage extends BorderPane {
         
         replacementBtn.setOnAction(e -> {
             Stage currentStage = (Stage) replacementBtn.getScene().getWindow();
-            Scene newScene = new Scene(new PenggantianBarangPage(user), 1280, 720);
+            Scene newScene = new Scene(new PenggantianBarangPage(user), currentStage.getWidth(), currentStage.getHeight());
             currentStage.setScene(newScene);
+            currentStage.setMaximized(true);
         });
 
 
