@@ -22,7 +22,7 @@ public class AppLauncher extends Application {
         stage.getIcons().add(
             new Image(getClass().getResourceAsStream("/assets/asaindo.png"))
         );
-        stage.setTitle("Ngetes doang bjirr");
+        stage.setTitle("Sistem Inventaris Barang Kampus");
         stage.setResizable(true);
 
         MainPage root = new MainPage(stage);

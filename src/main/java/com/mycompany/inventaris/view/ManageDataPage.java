@@ -755,9 +755,6 @@ public class ManageDataPage extends BorderPane {
         }
     }
 
-    /* ===========================
-       PINDAH BARANG POPUP - FIX
-       =========================== */
     private void showPindahBarangPopup() {
         Stage popup = new Stage();
         popup.setTitle("Pindah Barang Stock");
@@ -804,9 +801,6 @@ public class ManageDataPage extends BorderPane {
 
         detailTable.getColumns().addAll(lokasiCol, idCol, namaCol, qtyCol);
 
-        /* ===============================
-           FIX: LOAD DATA MENGGUNAKAN ID
-           =============================== */
         dariLokasiCombo.setOnAction(e -> {
             detailTable.getItems().clear();
 
@@ -816,7 +810,7 @@ public class ManageDataPage extends BorderPane {
                 for (Barang b : barangList) {
                     detailTable.getItems().add(
                         new DetailBarang(
-                            b.getIdBarang(),      // ID ASLI
+                            b.getIdBarang(),      
                             b.getLokasi(),
                             b.getNama(),
                             String.valueOf(b.getStok())
@@ -846,9 +840,6 @@ public class ManageDataPage extends BorderPane {
             "-fx-background-radius: 8; -fx-font-weight: bold; -fx-cursor: hand;"
         );
 
-        /* ===========================
-           FIX: PINDAH BARANG DENGAN ID
-           =========================== */
         simpanBtn.setOnAction(e -> {
             DetailBarang selected = detailTable.getSelectionModel().getSelectedItem();
 
@@ -1172,9 +1163,7 @@ public class ManageDataPage extends BorderPane {
         return btn;
     }
 
-    /* ======================
-       DATA TABLE UTAMA
-       ====================== */
+
     public static class BarangData {
         private String id;
         private String idBarang;
@@ -1197,12 +1186,8 @@ public class ManageDataPage extends BorderPane {
         public String getJumlah() { return jumlah; }
     }
 
-    /* ======================
-       DETAIL BARANG (POPUP)
-       SUDAH DIFIX PAKAI ID
-       ====================== */
     public static class DetailBarang {
-        private int idBarang;        // ID BARANG ASLI DARI DB
+        private int idBarang;        
         private String lokasi;
         private String namaBarang;
         private String qty;
